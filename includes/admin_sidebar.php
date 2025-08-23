@@ -33,7 +33,8 @@
                 <li><a href="settings.php">基本设置</a></li>
                 <li><a href="settings.php?tab=seo">SEO设置</a></li>
                 <li><a href="settings.php?tab=email">邮件设置</a></li>
-                <li><a href="settings.php?tab=numbers">号码池管理</a></li>
+                <li><a href="numbers.php">号码池列表</a></li>
+                <li><a href="settings.php?tab=numbers">号码池设置</a></li>
             </ul>
         </li>
         <li>

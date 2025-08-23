@@ -2,22 +2,32 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f8f9fa;
 }
+
 .sidebar {
-    position: sticky;
+    /* MODIFICATION START: Change to fixed positioning */
+    position: fixed; /* Use fixed to keep it on screen */
     top: 0;
-    height: 100vh;
+    left: 0;
+    height: 100vh;   /* Full height */
+    width: 16.66666667%; /* Equivalent to col-md-2 */
     background: #343a40;
     color: white;
     padding-top: 1rem;
+    overflow-y: auto; /* Add scroll if sidebar content is long */
+    z-index: 1000;
+    /* MODIFICATION END */
 }
+
 .sidebar-header {
     padding: 10px 20px;
     background: #212529;
     text-align: center;
 }
+
 .sidebar .components {
     padding: 20px 0;
 }
+
 .sidebar a {
     color: rgba(255, 255, 255, 0.8);
     padding: 10px 20px;
@@ -25,18 +35,25 @@ body {
     text-decoration: none;
     transition: all 0.3s;
 }
+
 .sidebar a:hover {
     color: white;
     background: #495057;
 }
+
 .sidebar .active > a, a[aria-expanded="true"] {
     color: white;
     background: #0d6efd;
 }
+
 .main-content {
+    /* MODIFICATION START: Add margin to avoid overlap with fixed sidebar */
+    margin-left: 16.66666667%; /* Same as sidebar width */
     padding: 20px;
-    width: 100%;
+    width: 83.33333333%; /* Equivalent to col-md-10 */
+    /* MODIFICATION END */
 }
+
 .sidebar ul ul a {
     font-size: 0.9em !important;
     padding-left: 40px !important;

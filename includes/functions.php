@@ -3,6 +3,68 @@
  * Yuan-ICP 公共函数库
  */
 
+// 引入 Composer 的自动加载文件
+require_once __DIR__.'/../vendor/autoload.php';
+
+// 使用 PHPMailer 的命名空间
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+/**
+ * 发送邮件的通用函数
+ * @param string $toEmail 收件人邮箱
+ * @param string $toName  收件人名称
+ * @param string $subject 邮件主题
+ * @param string $body    邮件内容 (HTML)
+ * @return bool           发送成功返回 true, 否则返回 false
+ */
+function send_email($toEmail, $toName, $subject, $body) {
+    $db = db();
+    $stmt = $db->query("SELECT config_key, config_value FROM system_config WHERE config_key LIKE 'smtp_%' OR config_key IN ('from_email', 'from_name', 'site_name')");
+    $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // 如果未配置SMTP主机，则直接返回失败，并记录错误日志
+    if (empty($settings['smtp_host'])) {
+        error_log('SMTP not configured. Email not sent.');
+        return false;
+    }
+
+    $mail = new PHPMailer(true);
+
+    try {
+        //服务器配置
+        $mail->isSMTP();
+        $mail->Host       = $settings['smtp_host'];
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $settings['smtp_username'] ?? '';
+        $mail->Password   = $settings['smtp_password'] ?? '';
+        $mail->SMTPSecure = $settings['smtp_secure'] ?? PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = intval($settings['smtp_port'] ?? 587);
+        $mail->CharSet    = 'UTF-8';
+
+        //发件人
+        $fromEmail = $settings['from_email'] ?? $settings['smtp_username'];
+        $fromName = $settings['from_name'] ?? $settings['site_name'] ?? 'Yuan-ICP System';
+        $mail->setFrom($fromEmail, $fromName);
+
+        //收件人
+        $mail->addAddress($toEmail, $toName);
+
+        //内容
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body    = $body;
+        $mail->AltBody = strip_tags($body); // 为不支持HTML的客户端准备纯文本内容
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        // 记录详细的错误日志，方便排查问题
+        error_log("Message could not be sent. Mailer Error: {$mail->ErrorInfo}");
+        return false;
+    }
+}
+
 // 加载配置文件（带缓存和大小限制）
 function config($key, $default = null) {
     static $configCache = [];
@@ -197,6 +259,7 @@ function isValidDomain($domain) {
     return (bool)preg_match('/^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i', $domain);
 }
 
+
 function modify_url($new_params) {
     $query = $_GET;
     
@@ -205,4 +268,52 @@ function modify_url($new_params) {
     }
     
     return '?' . http_build_query($query);
+}
+
+/**
+ * 根据规则生成唯一的备案号
+ * @return string|null 返回生成的唯一号码，如果失败则返回null
+ */
+function generate_unique_icp_number() {
+    $db = db();
+    
+    // 从数据库获取生成规则和保留号码
+    $stmt = $db->query("SELECT config_key, config_value FROM system_config WHERE config_key IN ('number_generate_format', 'reserved_numbers')");
+    $config = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    
+    $format = $config['number_generate_format'] ?? 'Yuan{U}{U}{N}{N}{N}{N}{N}{N}';
+    $reserved_numbers_str = $config['reserved_numbers'] ?? '';
+    $reserved_numbers = array_filter(array_map('trim', explode("\n", $reserved_numbers_str)));
+
+    $max_attempts = 100; // 防止无限循环
+    for ($i = 0; $i < $max_attempts; $i++) {
+        // 生成号码
+        $replacements = [
+            '{N}' => fn() => random_int(0, 9),
+            '{U}' => fn() => chr(random_int(65, 90)),
+            '{L}' => fn() => chr(random_int(97, 122)),
+        ];
+        
+        $number = preg_replace_callback('/{(\w)}/', function($matches) use ($replacements) {
+            $key = '{' . strtoupper($matches[1]) . '}';
+            if (isset($replacements[$key])) {
+                return $replacements[$key]();
+            }
+            return $matches[0]; // 如果规则不匹配，则原样返回
+        }, $format);
+
+        // 检查是否在保留列表中
+        if (in_array($number, $reserved_numbers)) {
+            continue;
+        }
+
+        // 检查数据库中是否已存在
+        $stmt_check = $db->prepare("SELECT COUNT(*) FROM icp_applications WHERE number = ?");
+        $stmt_check->execute([$number]);
+        if ($stmt_check->fetchColumn() == 0) {
+            return $number; // 找到唯一号码，返回
+        }
+    }
+
+    return null; // 达到最大尝试次数仍未找到
 }

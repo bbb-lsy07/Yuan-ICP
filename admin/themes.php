@@ -130,62 +130,64 @@ $activeTheme = ThemeManager::getActiveTheme();
 </style>
 </head>
 <body>
-    <?php include __DIR__.'/../includes/admin_sidebar.php'; ?>
-    
-    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2">主题管理</h1>
-            <div class="btn-toolbar mb-2 mb-md-0">
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                    <i class="fas fa-upload me-1"></i>上传主题
-                </button>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-2 p-0">
+                <?php include __DIR__.'/../includes/admin_sidebar.php'; ?>
             </div>
-        </div>
+    
+            <div class="col-md-10 main-content">
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">主题管理</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            <i class="fas fa-upload me-1"></i>上传主题
+        </button>
+    </div>
+</div>
         
         <?php if ($message): ?>
         <div class="alert alert-info"><?php echo htmlspecialchars($message); ?></div>
         <?php endif; ?>
         
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-            <?php foreach ($themes as $themeName => $theme): ?>
-            <div class="col">
-                <div class="card theme-card <?php echo $themeName === $activeTheme ? 'theme-active' : ''; ?>">
-                    <div class="theme-screenshot" style="background-image: url('<?php echo $theme['screenshot'] ?? 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22300%22%20height%3D%22200%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%22%20preserveAspectRatio%3D%22none%22%3E%3Cdefs%3E%3Cstyle%20type%3D%22text%2Fcss%22%3E%23holder_18945b7b7e7%20text%20%7B%20fill%3A%23AAAAAA%3Bfont-weight%3Abold%3Bfont-family%3AArial%2C%20Helvetica%2C%20Open%20Sans%2C%20sans-serif%2C%20monospace%3Bfont-size%3A15pt%20%7D%20%3C%2Fstyle%3E%3C%2Fdefs%3E%3Cg%20id%3D%22holder_18945b7b7e7%22%3E%3Crect%20width%3D%22300%22%20height%3D%22200%22%20fill%3D%22%23EEEEEE%22%3E%3C%2Frect%3E%3Cg%3E%3Ctext%20x%3D%22110%22%20y%3D%22107%22%3E'.urlencode(is_string($theme['name']) ? $theme['name'] : 'No Screenshot').'%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E'; ?>')"></div>
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <?php echo htmlspecialchars($theme['name']); ?>
-                            <?php if ($themeName === $activeTheme): ?>
-                            <span class="badge bg-success">当前主题</span>
-                            <?php endif; ?>
-                        </h5>
-                        <p class="card-text">
-                            <small class="text-muted">版本: <?php echo htmlspecialchars($theme['version'] ?? '1.0.0'); ?></small><br>
-                            <?php echo htmlspecialchars($theme['description'] ?? ''); ?>
-                        </p>
-                        
-                        <div class="d-flex justify-content-between">
-                            <?php if ($themeName !== $activeTheme): ?>
-                            <a href="themes.php?action=activate&theme=<?php echo urlencode($themeName); ?>" class="btn btn-sm btn-primary">
-                                <i class="fas fa-check me-1"></i>启用
-                            </a>
-                            <?php else: ?>
-                            <span class="btn btn-sm btn-success disabled">
-                                <i class="fas fa-check-circle me-1"></i>已启用
-                            </span>
-                            <?php endif; ?>
-                            
-                            <?php if ($themeName !== 'default' && $themeName !== $activeTheme): ?>
-                            <a href="themes.php?action=delete&theme=<?php echo urlencode($themeName); ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除此主题吗？')">
-                                <i class="fas fa-trash me-1"></i>删除
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    <?php foreach ($themes as $themeName => $theme): ?>
+    <div class="col">
+        <div class="card theme-card h-100 <?php echo $themeName === $activeTheme ? 'theme-active' : ''; ?>">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h5 class="card-title"><?php echo htmlspecialchars($theme['name']); ?></h5>
+                    <span class="badge bg-<?php echo $themeName === $activeTheme ? 'success' : 'secondary'; ?>">
+                        <?php echo $themeName === $activeTheme ? '当前主题' : ''; ?>
+                    </span>
+                </div>
+                <h6 class="card-subtitle mb-2 text-muted">版本: <?php echo htmlspecialchars($theme['version'] ?? '1.0.0'); ?></h6>
+                <p class="card-text"><?php echo htmlspecialchars($theme['description'] ?? ''); ?></p>
+                
+                <div class="btn-group w-100">
+                    <?php if ($themeName !== $activeTheme): ?>
+                    <a href="themes.php?action=activate&theme=<?php echo urlencode($themeName); ?>" class="btn btn-sm btn-primary">
+                        <i class="fas fa-check me-1"></i>启用
+                    </a>
+                    <?php else: ?>
+                    <span class="btn btn-sm btn-success disabled">
+                        <i class="fas fa-check-circle me-1"></i>已启用
+                    </span>
+                    <?php endif; ?>
+                    
+                    <?php if ($themeName !== 'default' && $themeName !== $activeTheme): ?>
+                    <a href="themes.php?action=delete&theme=<?php echo urlencode($themeName); ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除此主题吗？')">
+                        <i class="fas fa-trash me-1"></i>删除
+                    </a>
+                    <?php endif; ?>
                 </div>
             </div>
-            <?php endforeach; ?>
         </div>
-    </main>
+    </div>
+    <?php endforeach; ?>
+</div>
+        </div>
+    </div>
 
     <!-- 上传主题模态框 -->
     <div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">

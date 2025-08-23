@@ -13,21 +13,39 @@ $message = '';
 // 处理插件操作
 switch ($action) {
     case 'enable':
-        $pluginId = $_GET['id'] ?? 0;
-        $message = '插件已启用';
+        $pluginId = intval($_GET['id'] ?? 0);
+        $stmt = $db->prepare("UPDATE plugins SET is_active = 1 WHERE id = ?");
+        if ($stmt->execute([$pluginId])) {
+            $message = '插件已启用';
+        } else {
+            $message = '启用插件失败';
+        }
         break;
         
     case 'disable':
-        $pluginId = $_GET['id'] ?? 0;
-        $message = '插件已禁用';
+        $pluginId = intval($_GET['id'] ?? 0);
+        $stmt = $db->prepare("UPDATE plugins SET is_active = 0 WHERE id = ?");
+        if ($stmt->execute([$pluginId])) {
+            $message = '插件已禁用';
+        } else {
+            $message = '禁用插件失败';
+        }
         break;
         
     case 'delete':
-        $pluginId = $_GET['id'] ?? 0;
-        if (PluginManager::uninstall($pluginId)) {
-            $message = '插件已删除';
+        $pluginId = intval($_GET['id'] ?? 0);
+        // 安全检查：不能删除已启用的插件
+        $checkStmt = $db->prepare("SELECT is_active FROM plugins WHERE id = ?");
+        $checkStmt->execute([$pluginId]);
+        if ($checkStmt->fetchColumn() == 1) {
+            $message = '删除失败：请先禁用插件';
         } else {
-            $message = '删除插件失败';
+            $stmt = $db->prepare("DELETE FROM plugins WHERE id = ?");
+            if ($stmt->execute([$pluginId])) {
+                $message = '插件已删除';
+            } else {
+                $message = '删除插件失败';
+            }
         }
         break;
         
@@ -65,7 +83,7 @@ switch ($action) {
 }
 
 // 获取插件列表
-$plugins = $db->query("SELECT *, 'active' as status FROM plugins ORDER BY name")->fetchAll();
+$plugins = $db->query("SELECT * FROM plugins ORDER BY name")->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">

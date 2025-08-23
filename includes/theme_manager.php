@@ -35,34 +35,34 @@ class ThemeManager {
      * 获取当前激活的主题
      * @return string
      */
-    public static function getActiveTheme() {
-        global $db;
-        $theme = $db->query("SELECT config_value FROM system_config WHERE config_key = 'active_theme'")->fetchColumn();
-        return $theme ?: 'default';
-    }
+public static function getActiveTheme() {
+    $db = db(); // <-- 修改这里
+    $theme = $db->query("SELECT config_value FROM system_config WHERE config_key = 'active_theme'")->fetchColumn();
+    return $theme ?: 'default';
+}
     
     /**
      * 激活主题
      * @param string $themeName 主题名称
      * @return bool
      */
-    public static function activateTheme($themeName) {
-        global $db;
-        
-        // 检查主题是否存在
-        $themes = self::getAvailableThemes();
-        if (!isset($themes[$themeName])) {
-            return false;
-        }
-        
-        // 更新数据库
-        $stmt = $db->prepare("
-            INSERT INTO system_config (config_key, config_value) 
-            VALUES ('active_theme', ?)
-            ON DUPLICATE KEY UPDATE config_value = ?
-        ");
-        return $stmt->execute([$themeName, $themeName]);
+public static function activateTheme($themeName) {
+    $db = db(); // <-- 修改这里
+    
+    // 检查主题是否存在
+    $themes = self::getAvailableThemes();
+    if (!isset($themes[$themeName])) {
+        return false;
     }
+    
+    // 更新数据库
+    $stmt = $db->prepare("
+        INSERT INTO system_config (config_key, config_value) 
+        VALUES ('active_theme', ?)
+        ON DUPLICATE KEY UPDATE config_value = ?
+    ");
+    return $stmt->execute([$themeName, $themeName]);
+}
     
     /**
      * 安装主题

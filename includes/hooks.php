@@ -71,7 +71,7 @@ class PluginManager {
             return []; // 如果数据库连接失败，返回空数组
         }
         
-        $stmt = $db->query("SELECT * FROM plugins");
+        $stmt = $db->query("SELECT * FROM plugins WHERE is_active = 1");
         return $stmt->fetchAll();
     }
     

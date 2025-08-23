@@ -58,13 +58,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $id = intval($_POST['id']);
     $user = current_user();
     
-    if ($_POST['action'] === 'approve') {
-        $db->prepare("UPDATE icp_applications SET status = 'approved', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?")
-           ->execute([$user['id'], $id]);
-    } elseif ($_POST['action'] === 'reject' && !empty($_POST['reason'])) {
-        $reason = trim($_POST['reason']);
-        $db->prepare("UPDATE icp_applications SET status = 'rejected', reviewed_by = ?, reviewed_at = NOW(), reject_reason = ? WHERE id = ?")
-           ->execute([$user['id'], $reason, $id]);
+    // 获取申请详情用于发送邮件
+    $appStmt = $db->prepare("SELECT * FROM icp_applications WHERE id = ?");
+    $appStmt->execute([$id]);
+    $application = $appStmt->fetch();
+
+    if ($application) {
+        if ($_POST['action'] === 'approve') {
+            $db->prepare("UPDATE icp_applications SET status = 'approved', reviewed_by = ?, reviewed_at = ".db_now()." WHERE id = ?")
+               ->execute([$user['id'], $id]);
+            
+            // 发送通过邮件
+            $site_name = db()->query("SELECT config_value FROM system_config WHERE config_key = 'site_name'")->fetchColumn() ?: 'Yuan-ICP';
+            $subject = "【{$site_name}】您的备案申请已通过";
+            $body = "
+                <p>尊敬的用户 {$application['owner_name']},</p>
+                <p>恭喜您！您为网站 <strong>{$application['website_name']} ({$application['domain']})</strong> 提交的备案申请已审核通过。</p>
+                <p>您的备案号为：<strong>{$application['number']}</strong></p>
+                <p>请按照要求将备案号链接放置在您网站的底部。感谢您的使用！</p>
+                <br>
+                <p>-- {$site_name} 团队</p>
+            ";
+            send_email($application['owner_email'], $application['owner_name'], $subject, $body);
+
+        } elseif ($_POST['action'] === 'reject' && !empty($_POST['reason'])) {
+            $reason = trim($_POST['reason']);
+            $db->prepare("UPDATE icp_applications SET status = 'rejected', reviewed_by = ?, reviewed_at = ".db_now().", reject_reason = ? WHERE id = ?")
+               ->execute([$user['id'], $reason, $id]);
+            
+            // 发送驳回邮件
+            $site_name = db()->query("SELECT config_value FROM system_config WHERE config_key = 'site_name'")->fetchColumn() ?: 'Yuan-ICP';
+            $subject = "【{$site_name}】您的备案申请已被驳回";
+            $body = "
+                <p>尊敬的用户 {$application['owner_name']},</p>
+                <p>很遗憾地通知您，您为网站 <strong>{$application['website_name']} ({$application['domain']})</strong> 提交的备案申请已被驳回。</p>
+                <p>驳回原因如下：</p>
+                <blockquote style='border-left: 4px solid #ccc; padding-left: 15px; margin-left: 0;'>
+                    <p>".nl2br(htmlspecialchars($reason))."</p>
+                </blockquote>
+                <p>请您根据驳回原因修改信息后重新提交申请。感谢您的理解与合作！</p>
+                <br>
+                <p>-- {$site_name} 团队</p>
+            ";
+            send_email($application['owner_email'], $application['owner_name'], $subject, $body);
+        }
     }
     
     // 重定向避免重复提交

@@ -7,7 +7,13 @@ require_login();
 
 // 缓存5分钟
 $cacheTime = 300;
-$cacheFile = __DIR__.'/../cache/dashboard_stats.cache';
+$cacheDir = __DIR__.'/../cache'; // 定义 cache 目录
+$cacheFile = $cacheDir.'/dashboard_stats.cache'; // 定义 cache 文件路径
+
+// 检查并创建缓存目录
+if (!is_dir($cacheDir)) {
+    mkdir($cacheDir, 0755, true);
+}
 $db = db();
 
 if (!file_exists($cacheFile) || (time() - filemtime($cacheFile)) > $cacheTime) {
