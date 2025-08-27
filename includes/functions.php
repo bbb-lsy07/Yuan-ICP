@@ -169,8 +169,7 @@ function db($reset = false) {
                 $dsn = "pgsql:host={$config['host']};port={$config['port']};dbname={$config['database']}";
                 break;
             case 'sqlite':
-                // 使用绝对路径，避免open_basedir限制
-                $db_path = realpath(dirname(__DIR__)) . '/data/sqlite.db';
+                $db_path = $config['database']; // 直接使用配置文件中定义的绝对路径
                 $dsn = "sqlite:{$db_path}";
                 break;
             default:
@@ -316,4 +315,73 @@ function generate_unique_icp_number() {
     }
 
     return null; // 达到最大尝试次数仍未找到
+}
+
+/**
+ * 根据预定义规则检查号码是否为靓号（用于自动生成模式）
+ * @param string $number
+ * @return bool
+ */
+function is_premium_number($number) {
+    // 规则1: 包含三个或以上连续相同的数字或字母 (例如 888, AAA)
+    if (preg_match('/(.)\\1\\1/', $number)) {
+        return true;
+    }
+    // 规则2: 包含常见的靓号组合
+    $lucky_sequences = ['666', '888', '999', '520', '1314', 'ABC', 'XYZ', 'AABB', 'ABAB'];
+    foreach ($lucky_sequences as $seq) {
+        if (stripos($number, $seq) !== false) {
+            return true;
+        }
+    }
+    // 规则3: AABB 或 ABAB 形式 (更通用的正则)
+    if (preg_match('/(.)\\1(.)\\2/', $number) || preg_match('/(.)(.)\\1\\2/', $number)) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * 动态判断一个给定的备案号是否为靓号 (最终修正版)。
+ * 这个函数是独立的，包含了所有判断逻辑，并对配置进行了缓存以优化性能。
+ *
+ * @param string $number 需要检查的备案号。
+ * @return bool 如果是靓号返回 true，否则返回 false。
+ */
+function check_if_number_is_premium($number) {
+    // 使用静态变量来缓存配置，避免在同一次请求中重复查询数据库
+    static $is_auto_mode = null;
+    $db = db();
+
+    // 仅在第一次调用此函数时执行数据库查询来获取系统模式
+    if ($is_auto_mode === null) {
+        try {
+            $stmt = $db->prepare("SELECT config_value FROM system_config WHERE config_key = ?");
+            $stmt->execute(['number_auto_generate']);
+            $value = $stmt->fetchColumn();
+            // (bool) 可以正确处理 '1', '0', false 或 null 的情况
+            $is_auto_mode = (bool)$value;
+        } catch (Exception $e) {
+            // 如果查询失败，默认返回 false 且不再尝试
+            error_log('无法查询靓号判断模式: ' . $e->getMessage());
+            $is_auto_mode = false; // 出错时假定为手动模式
+            return false;
+        }
+    }
+
+    if ($is_auto_mode) {
+        // 自动生成模式：使用规则进行判断
+        return is_premium_number($number);
+    } else {
+        // 手动号码池模式：查询数据库
+        try {
+            $stmt = $db->prepare("SELECT is_premium FROM selectable_numbers WHERE number = ? LIMIT 1");
+            $stmt->execute([$number]);
+            $result = $stmt->fetchColumn();
+            return (bool)$result;
+        } catch (Exception $e) {
+            error_log('查询号码池靓号状态失败: ' . $e->getMessage());
+            return false;
+        }
+    }
 }

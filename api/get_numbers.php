@@ -3,30 +3,6 @@
 session_start();
 require_once __DIR__.'/../includes/functions.php';
 
-/**
- * 检查号码是否为靓号的简单规则
- * @param string $number
- * @return bool
- */
-function is_premium_number($number) {
-    // 规则1: 包含三个或以上连续相同的数字或字母 (例如 888, AAA)
-    if (preg_match('/(.)\\1\\1/', $number)) {
-        return true;
-    }
-    // 规则2: 包含常见的靓号组合
-    $lucky_sequences = ['666', '888', '999', '520', '1314', 'ABC', 'XYZ'];
-    foreach ($lucky_sequences as $seq) {
-        if (stripos($number, $seq) !== false) {
-            return true;
-        }
-    }
-    // 规则3: AABB 或 ABAB 形式
-    if (preg_match('/(.)\\1(.)\\2/', $number) || preg_match('/(.)(.)\\1\\2/', $number)) {
-        return true;
-    }
-    return false;
-}
-
 // 获取系统配置，判断是自动生成还是从数据库读取
 $db = db();
 $stmt_config = $db->query("SELECT config_key, config_value FROM system_config WHERE config_key = 'number_auto_generate'");

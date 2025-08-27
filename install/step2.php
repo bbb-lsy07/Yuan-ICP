@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     <?php endif; ?>
     
-    <form method="post">
+    <form method="post" action="step3.php" enctype="multipart/form-data">
         <h2>站点信息</h2>
         <div class="form-group">
             <label for="site_name">站点名称</label>
@@ -189,8 +189,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div id="sqlite-fields" class="db-fields">
             <div class="form-group">
                 <label for="db_file">数据库文件路径 (相对于项目根目录)</label>
-                <input type="text" id="db_file" name="db_file" 
+                <input type="text" id="db_file" name="db_file"
                        value="<?php echo htmlspecialchars($_SESSION['install_config']['db_file'] ?? 'data/sqlite.db'); ?>">
+            </div>
+            <!-- Restore from backup section -->
+            <div class="form-group" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                <label for="sqlite_backup">从备份文件恢复 (可选)</label>
+                <input type="file" id="sqlite_backup" name="sqlite_backup" class="form-control" accept=".db, .sqlite, .sqlite3">
+                <div class="form-text text-muted" style="font-size: 0.875em;">如果您有一个 "sqlite.db" 备份文件，可在此上传直接恢复数据。这将跳过数据库初始化和管理员创建步骤。</div>
             </div>
         </div>
         

@@ -1,101 +1,86 @@
 <?php
-// 安装向导 - 第三步：完成安装
 session_start();
 
-// 检查是否已完成前两步
-if (!isset($_SESSION['install_step1_passed']) || !$_SESSION['install_step1_passed'] || 
-    !isset($_SESSION['install_config'])) {
+if (!isset($_SESSION['install_step1_passed']) || !$_SESSION['install_step1_passed']) {
     header('Location: step1.php');
     exit;
 }
 
-// 初始化错误数组
 $errors = [];
+$restored_from_backup = false;
+$project_root = dirname(__DIR__); // 项目根目录
 
 try {
-    // 生成数据库配置文件
-    $dbConfig = "<?php\n";
-    $dbConfig .= "return [\n";
-    $dbConfig .= "    'driver' => '".$_SESSION['install_config']['db_type']."',\n";
-    
-    switch ($_SESSION['install_config']['db_type']) {
-        case 'mysql':
-        case 'pgsql':
-            $dbConfig .= "    'host' => '".$_SESSION['install_config']['db_host']."',\n";
-            $dbConfig .= "    'port' => '".($_SESSION['install_config']['db_port'] ?? '3306')."',\n";
-            $dbConfig .= "    'database' => '".$_SESSION['install_config']['db_name']."',\n";
-            $dbConfig .= "    'username' => '".$_SESSION['install_config']['db_user']."',\n";
-            $dbConfig .= "    'password' => '".$_SESSION['install_config']['db_pass']."',\n";
-            break;
-        case 'sqlite':
-            $dbConfig .= "    'database' => __DIR__.'/../../".$_SESSION['install_config']['db_file']."',\n";
-            break;
+    // 从 POST 获取配置信息
+    $config = [
+        'db_type' => $_POST['db_type'] ?? 'sqlite',
+        'db_file' => $_POST['db_file'] ?? 'data/sqlite.db',
+        'admin_user' => $_POST['admin_user'] ?? '',
+        'admin_pass' => $_POST['admin_pass'] ?? '',
+        'admin_email' => $_POST['admin_email'] ?? ''
+    ];
+
+    $db_path_absolute = $project_root . '/' . ltrim($config['db_file'], '/');
+    $db_dir = dirname($db_path_absolute);
+
+    // 检查是否从 SQLite 备份恢复
+    if ($config['db_type'] === 'sqlite' && isset($_FILES['sqlite_backup']) && $_FILES['sqlite_backup']['error'] === UPLOAD_ERR_OK) {
+        if (!is_dir($db_dir)) {
+            if (!mkdir($db_dir, 0755, true)) {
+                throw new Exception('无法创建数据目录: ' . htmlspecialchars($db_dir));
+            }
+        }
+
+        $tmp_path = $_FILES['sqlite_backup']['tmp_name'];
+        try {
+            $pdo_test = new PDO('sqlite:' . $tmp_path);
+            $pdo_test->query("SELECT name FROM sqlite_master WHERE type='table' LIMIT 1");
+        } catch (Exception $e) {
+            throw new Exception('上传的文件似乎不是一个有效的 SQLite 数据库。');
+        }
+        $pdo_test = null;
+
+        if (!move_uploaded_file($tmp_path, $db_path_absolute)) {
+            throw new Exception('移动上传的数据库备份文件失败。请检查 `data` 目录的写入权限。');
+        }
+
+        $restored_from_backup = true;
     }
-    
-    $dbConfig .= "    'charset' => 'utf8mb4',\n";
-    $dbConfig .= "    'collation' => 'utf8mb4_unicode_ci',\n";
-    $dbConfig .= "    'prefix' => '',\n";
-    $dbConfig .= "];\n";
-    
-    // 写入数据库配置文件
-    if (!file_put_contents(dirname(__DIR__).'/config/database.php', $dbConfig)) {
-        throw new Exception('无法写入数据库配置文件');
+
+    // --- 生成数据库配置文件 ---
+    $dbConfigContent = "<?php\nreturn [\n    'driver' => 'sqlite',\n    'database' => '" . addslashes($db_path_absolute) . "',\n];\n";
+
+    // 确保 config 目录存在
+    if (!is_dir($project_root . '/config')) {
+        mkdir($project_root . '/config', 0755, true);
     }
-    
-    // 生成应用配置文件
-    $appConfig = "<?php\n";
-    $appConfig .= "return [\n";
-    $appConfig .= "    'site_name' => '".addslashes($_SESSION['install_config']['site_name'])."',\n";
-    $appConfig .= "    'site_url' => '".rtrim($_SESSION['install_config']['site_url'], '/')."',\n";
-    $appConfig .= "    'timezone' => 'Asia/Shanghai',\n";
-    $appConfig .= "    'debug' => false,\n";
-    $appConfig .= "];\n";
-    
-    if (!file_put_contents(dirname(__DIR__).'/config/app.php', $appConfig)) {
-        throw new Exception('无法写入应用配置文件');
+
+    if (!file_put_contents($project_root . '/config/database.php', $dbConfigContent)) {
+        throw new Exception('无法写入数据库配置文件 `config/database.php`。请检查权限。');
     }
-    
-    // 初始化数据库
-    $db = null;
-    switch ($_SESSION['install_config']['db_type']) {
-        case 'mysql':
-            $dsn = "mysql:host={$_SESSION['install_config']['db_host']};port={$_SESSION['install_config']['db_port']};charset=utf8mb4";
-            $db = new PDO($dsn, $_SESSION['install_config']['db_user'], $_SESSION['install_config']['db_pass']);
-            $db->exec("CREATE DATABASE IF NOT EXISTS `{$_SESSION['install_config']['db_name']}`");
-            $db->exec("USE `{$_SESSION['install_config']['db_name']}`");
-            break;
-        case 'pgsql':
-            $dsn = "pgsql:host={$_SESSION['install_config']['db_host']};port={$_SESSION['install_config']['db_port']}";
-            $db = new PDO($dsn, $_SESSION['install_config']['db_user'], $_SESSION['install_config']['db_pass']);
-            $db->exec("CREATE DATABASE \"{$_SESSION['install_config']['db_name']}\"");
-            $db = new PDO("pgsql:host={$_SESSION['install_config']['db_host']};port={$_SESSION['install_config']['db_port']};dbname={$_SESSION['install_config']['db_name']}", 
-                         $_SESSION['install_config']['db_user'], $_SESSION['install_config']['db_pass']);
-            break;
-        case 'sqlite':
-            $dbFile = dirname(__DIR__).'/'.$_SESSION['install_config']['db_file'];
-            $db = new PDO("sqlite:$dbFile");
-            break;
+
+    // --- 如果不是从备份恢复，则初始化数据库和管理员 ---
+    if (!$restored_from_backup) {
+        if (empty($config['admin_user']) || empty($config['admin_pass'])) {
+            throw new Exception("管理员用户名和密码不能为空。");
+        }
+
+        $db = new PDO("sqlite:" . $db_path_absolute);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        $sql = file_get_contents(__DIR__ . '/database.sql');
+        $db->exec($sql);
+
+        $stmt = $db->prepare("UPDATE admin_users SET username = ?, password = ?, email = ? WHERE username = 'admin'");
+        $stmt->execute([
+            $config['admin_user'],
+            password_hash($config['admin_pass'], PASSWORD_DEFAULT),
+            $config['admin_email']
+        ]);
     }
-    
-    // 设置PDO属性
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // 创建表结构
-    $sql = file_get_contents(__DIR__.'/database.sql');
-    $db->exec($sql);
-    
-    // 创建管理员账户
-    $stmt = $db->prepare("INSERT INTO admin_users (username, password, email, created_at) VALUES (?, ?, ?, ?)");
-    $stmt->execute([
-        $_SESSION['install_config']['admin_user'],
-        password_hash($_SESSION['install_config']['admin_pass'], PASSWORD_DEFAULT),
-        $_SESSION['install_config']['admin_email'],
-        date('Y-m-d H:i:s')
-    ]);
-    
-    // 标记安装完成
-    $_SESSION['install_complete'] = true;
-    
+
+    $_SESSION[$restored_from_backup ? 'install_complete_from_backup' : 'install_complete'] = true;
+
 } catch (Exception $e) {
     $errors[] = $e->getMessage();
 }
@@ -112,17 +97,7 @@ try {
         .success { color: green; margin: 20px 0; padding: 15px; background: #f0fff0; border: 1px solid #dff0d8; }
         .error { color: red; margin: 20px 0; padding: 15px; background: #fff0f0; border: 1px solid #f0d8d8; }
         .warning { color: #8a6d3b; margin: 20px 0; padding: 15px; background: #fcf8e3; border: 1px solid #faebcc; }
-        .btn { 
-            display: block; 
-            width: 200px; 
-            padding: 10px; 
-            margin: 20px auto; 
-            text-align: center; 
-            background: #4CAF50; 
-            color: white; 
-            text-decoration: none; 
-            border-radius: 5px;
-        }
+        .btn { display: block; width: 200px; padding: 10px; margin: 20px auto; text-align: center; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -136,20 +111,27 @@ try {
             <?php endforeach; ?>
             <p>请检查错误信息并<a href="step2.php">返回上一步</a>修改配置。</p>
         </div>
-    <?php elseif (isset($_SESSION['install_complete']) && $_SESSION['install_complete']): ?>
+    <?php elseif (isset($_SESSION['install_complete_from_backup'])): ?>
+        <div class="success">
+            <h3>从备份恢复安装成功！</h3>
+            <p>Yuan-ICP 已成功使用您的备份文件完成安装。</p>
+            <p>您现在可以 <a href="../admin/login.php">登录后台</a>，请使用您备份文件中的管理员账户信息登录。</p>
+        </div>
+        <div class="warning">
+            <h3>安全提示</h3>
+            <p>为了系统安全，请立即删除或重命名 install 目录。</p>
+        </div>
+        <a href="../" class="btn">访问网站首页</a>
+    <?php elseif (isset($_SESSION['install_complete'])): ?>
         <div class="success">
             <h3>安装成功！</h3>
             <p>Yuan-ICP 已成功安装到您的服务器。</p>
             <p>您现在可以<a href="../admin/login.php">登录后台</a>开始使用系统。</p>
         </div>
-        
         <div class="warning">
             <h3>安全提示</h3>
             <p>为了系统安全，请立即删除或重命名 install 目录。</p>
-            <p>您可以使用以下命令删除安装目录：</p>
-            <pre>rm -rf <?php echo htmlspecialchars(dirname(__DIR__).'/install'); ?></pre>
         </div>
-        
         <a href="../" class="btn">访问网站首页</a>
     <?php endif; ?>
 </body>

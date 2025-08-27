@@ -234,7 +234,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 <tbody>
                                     <?php foreach ($applications as $app): ?>
                                     <tr>
-                                        <td><?php echo htmlspecialchars($app['number']); ?></td>
+                                        <td>
+                                            <?php echo htmlspecialchars($app['number']); ?>
+                                            <?php if (check_if_number_is_premium($app['number'])): ?>
+                                                <span class="badge bg-warning text-dark ms-2"><i class="fas fa-gem"></i> 靓号</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?php echo htmlspecialchars($app['website_name']); ?></td>
                                         <td><?php echo htmlspecialchars($app['domain']); ?></td>
                                         <td>
@@ -251,11 +256,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                         <td>
                                             <div class="btn-group btn-group-sm">
                                                 <?php if ($app['status'] === 'pending'): ?>
-                                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal" 
+                                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal"
                                                         data-id="<?php echo $app['id']; ?>">通过</button>
-                                                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal" 
+                                                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal"
                                                         data-id="<?php echo $app['id']; ?>">驳回</button>
                                                 <?php endif; ?>
+                                                
+                                                <!-- 新增的编辑按钮 -->
+                                                <a href="application_edit.php?id=<?php echo $app['id']; ?>" class="btn btn-info">编辑</a>
+
                                                 <a href="applications.php?search=<?php echo urlencode($app['number']); ?>" class="btn btn-primary">查看</a>
                                             </div>
                                         </td>

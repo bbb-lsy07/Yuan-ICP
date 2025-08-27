@@ -35,6 +35,7 @@
                 <li><a href="settings.php?tab=email">邮件设置</a></li>
                 <li><a href="numbers.php">号码池列表</a></li>
                 <li><a href="settings.php?tab=numbers">号码池设置</a></li>
+                <li><a href="backup.php">备份与恢复</a></li>
             </ul>
         </li>
         <li>
