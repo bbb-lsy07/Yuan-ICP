@@ -96,7 +96,7 @@ Yuan-ICP 的核心魅力在于其强大的可扩展性。
 
 ## 📄 许可证
 
-本项目采用 **GPL-3.0** 许可证。详情请参阅 [LICENSE](https://github.com/bbb-lsy07/Yuan-ICP/blob/main/LICENSE) 文件。
+本项目采用 **GPL-3.0** 许可证。详情请参阅 [LICENSE](https://github.com/bbb-lsy07/Yuan-ICP/blob/master/LICENSE) 文件。
 
 ---
 
@@ -198,4 +198,4 @@ Contributions are what make the open-source community such an amazing place to l
 
 ## 📄 License
 
-This project is licensed under the **GPL-3.0 License**. See the [LICENSE](https://github.com/bbb-lsy07/Yuan-ICP/blob/main/LICENSE) file for more details.
+This project is licensed under the **GPL-3.0 License**. See the [LICENSE](https://github.com/bbb-lsy07/Yuan-ICP/blob/master/LICENSE) file for more details.
