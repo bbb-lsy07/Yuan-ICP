@@ -1,111 +1,50 @@
 <?php
-require_once __DIR__.'/../includes/auth.php';
-require_once __DIR__.'/../includes/functions.php';
+require_once __DIR__.'/../includes/bootstrap.php';
 
-// 检查登录状态
 require_login();
 
-// 获取查询参数
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        $appManager = new ApplicationManager();
+        $user = current_user();
+        $id = intval($_POST['id']);
+        
+        if ($_POST['action'] === 'approve') {
+            $appManager->review($id, 'approve', $user['id']);
+            echo json_encode(['success' => true, 'message' => '申请已通过']);
+        } elseif ($_POST['action'] === 'reject' && !empty($_POST['reason'])) {
+            $reason = trim($_POST['reason']);
+            $appManager->review($id, 'reject', $user['id'], $reason);
+            echo json_encode(['success' => true, 'message' => '申请已驳回']);
+        } elseif ($_POST['action'] === 'delete') {
+            $appManager->delete($id);
+            // 您可以按需添加操作日志
+            // log_admin_action('delete', 'application', "删除备案申请 ID: {$id}");
+            echo json_encode(['success' => true, 'message' => '申请已成功删除']);
+        } else {
+            throw new Exception('无效的操作');
+        }
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
 $status = $_GET['status'] ?? 'all';
 $page = max(1, intval($_GET['page'] ?? 1));
 $search = trim($_GET['search'] ?? '');
 $perPage = 15;
 
-// 构建基础查询
-$db = db();
-$query = "SELECT a.*, u.username as reviewer FROM icp_applications a
-          LEFT JOIN admin_users u ON a.reviewed_by = u.id";
-$where = [];
-$params = [];
-
-// 添加状态筛选
-if (in_array($status, ['pending', 'approved', 'rejected'])) {
-    $where[] = "a.status = ?";
-    $params[] = $status;
-}
-
-// 添加搜索条件
-if (!empty($search)) {
-    $where[] = "(a.website_name LIKE ? OR a.domain LIKE ? OR a.number LIKE ?)";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-}
-
-// 组合WHERE条件
-if (!empty($where)) {
-    $query .= " WHERE " . implode(" AND ", $where);
-}
-
-// 获取总数用于分页
-$countQuery = "SELECT COUNT(*) FROM ($query) as total";
-$total = $db->prepare($countQuery);
-$total->execute($params);
-$totalItems = $total->fetchColumn();
-
-// 计算分页
-$totalPages = ceil($totalItems / $perPage);
-$offset = ($page - 1) * $perPage;
-
-// 获取当前页数据
-$query .= " ORDER BY a.created_at DESC LIMIT $offset, $perPage";
-$stmt = $db->prepare($query);
-$stmt->execute($params);
-$applications = $stmt->fetchAll();
-
-// 处理审核/驳回操作
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    $id = intval($_POST['id']);
-    $user = current_user();
-    
-    // 获取申请详情用于发送邮件
-    $appStmt = $db->prepare("SELECT * FROM icp_applications WHERE id = ?");
-    $appStmt->execute([$id]);
-    $application = $appStmt->fetch();
-
-    if ($application) {
-        if ($_POST['action'] === 'approve') {
-            $db->prepare("UPDATE icp_applications SET status = 'approved', reviewed_by = ?, reviewed_at = ".db_now()." WHERE id = ?")
-               ->execute([$user['id'], $id]);
-            
-            // 发送通过邮件
-            $site_name = db()->query("SELECT config_value FROM system_config WHERE config_key = 'site_name'")->fetchColumn() ?: 'Yuan-ICP';
-            $subject = "【{$site_name}】您的备案申请已通过";
-            $body = "
-                <p>尊敬的用户 {$application['owner_name']},</p>
-                <p>恭喜您！您为网站 <strong>{$application['website_name']} ({$application['domain']})</strong> 提交的备案申请已审核通过。</p>
-                <p>您的备案号为：<strong>{$application['number']}</strong></p>
-                <p>请按照要求将备案号链接放置在您网站的底部。感谢您的使用！</p>
-                <br>
-                <p>-- {$site_name} 团队</p>
-            ";
-            send_email($application['owner_email'], $application['owner_name'], $subject, $body);
-
-        } elseif ($_POST['action'] === 'reject' && !empty($_POST['reason'])) {
-            $reason = trim($_POST['reason']);
-            $db->prepare("UPDATE icp_applications SET status = 'rejected', reviewed_by = ?, reviewed_at = ".db_now().", reject_reason = ? WHERE id = ?")
-               ->execute([$user['id'], $reason, $id]);
-            
-            // 发送驳回邮件
-            $site_name = db()->query("SELECT config_value FROM system_config WHERE config_key = 'site_name'")->fetchColumn() ?: 'Yuan-ICP';
-            $subject = "【{$site_name}】您的备案申请已被驳回";
-            $body = "
-                <p>尊敬的用户 {$application['owner_name']},</p>
-                <p>很遗憾地通知您，您为网站 <strong>{$application['website_name']} ({$application['domain']})</strong> 提交的备案申请已被驳回。</p>
-                <p>驳回原因如下：</p>
-                <blockquote style='border-left: 4px solid #ccc; padding-left: 15px; margin-left: 0;'>
-                    <p>".nl2br(htmlspecialchars($reason))."</p>
-                </blockquote>
-                <p>请您根据驳回原因修改信息后重新提交申请。感谢您的理解与合作！</p>
-                <br>
-                <p>-- {$site_name} 团队</p>
-            ";
-            send_email($application['owner_email'], $application['owner_name'], $subject, $body);
-        }
-    }
-    
-    // 重定向避免重复提交
-    redirect(current_url());
+try {
+    $appManager = new ApplicationManager();
+    $filters = ['status' => $status, 'search' => $search];
+    $result = $appManager->getList($filters, $page, $perPage);
+    $applications = $result['applications'];
+    $pagination = $result['pagination'];
+} catch (Exception $e) {
+    handle_error('加载申请列表失败: ' . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -116,95 +55,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <title>备案管理 - Yuan-ICP</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
-<style>
-    .status-badge {
-        min-width: 60px;
-        display: inline-block;
-        text-align: center;
-    }
-    .search-box {
-        max-width: 300px;
-    }
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f8f9fa;
-    }
-    .sidebar {
-        min-height: 100vh;
-        background: #343a40;
-        color: white;
-    }
-    .sidebar-header {
-        padding: 20px;
-        background: #212529;
-    }
-    .sidebar a {
-        color: rgba(255, 255, 255, 0.8);
-        padding: 10px 15px;
-        display: block;
-        text-decoration: none;
-        transition: all 0.3s;
-    }
-    .sidebar a:hover {
-        color: white;
-        background: #495057;
-    }
-    .sidebar .active a {
-        color: white;
-        background: #007bff;
-    }
-    .main-content {
-        padding: 20px;
-    }
-    .stat-card {
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-        color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .stat-card i {
-        font-size: 2.5rem;
-        opacity: 0.8;
-    }
-    .stat-card.total { background: #20c997; }
-    .stat-card.pending { background: #fd7e14; }
-    .stat-card.approved { background: #28a745; }
-    .stat-card.rejected { background: #dc3545; }
-</style>
+    <link rel="stylesheet" href="css/admin.css">
+    <style>
+        /* 自定义弹窗样式 */
+        .custom-alert-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+        .custom-alert-box {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: slideInUp 0.3s ease;
+        }
+        .custom-alert-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .custom-alert-overlay.success .custom-alert-icon {
+            color: #10b981;
+        }
+        .custom-alert-overlay.error .custom-alert-icon {
+            color: #ef4444;
+        }
+        .custom-alert-overlay.warning .custom-alert-icon {
+            color: #f59e0b;
+        }
+        .custom-alert-overlay.info .custom-alert-icon {
+            color: #3b82f6;
+        }
+        #custom-alert-message {
+            font-size: 1.1rem;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+        }
+        @keyframes slideInUp { 
+            from { opacity: 0; transform: translateY(30px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+    </style>
 </head>
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- 侧边栏 -->
-            <div class="col-md-2 p-0">
-                <?php include __DIR__.'/../includes/admin_sidebar.php'; ?>
-            </div>
-            
-            <!-- 主内容区 -->
+            <div class="col-md-2 p-0"><?php include __DIR__.'/../includes/admin_sidebar.php'; ?></div>
             <div class="col-md-10 main-content">
                 <h2 class="mb-4">备案管理</h2>
-                
-                <!-- 筛选和搜索 -->
                 <div class="card mb-4">
                     <div class="card-body">
                         <form class="row g-3">
                             <div class="col-md-3">
                                 <label class="form-label">状态筛选</label>
                                 <select name="status" class="form-select">
-                                    <option value="all" <?php echo $status === 'all' ? 'selected' : ''; ?>>全部状态</option>
-                                    <option value="pending" <?php echo $status === 'pending' ? 'selected' : ''; ?>>待审核</option>
-                                    <option value="approved" <?php echo $status === 'approved' ? 'selected' : ''; ?>>已通过</option>
-                                    <option value="rejected" <?php echo $status === 'rejected' ? 'selected' : ''; ?>>已驳回</option>
+                                    <option value="all" <?php if ($status === 'all') echo 'selected'; ?>>全部状态</option>
+                                    <option value="pending" <?php if ($status === 'pending') echo 'selected'; ?>>待审核</option>
+                                    <option value="approved" <?php if ($status === 'approved') echo 'selected'; ?>>已通过</option>
+                                    <option value="rejected" <?php if ($status === 'rejected') echo 'selected'; ?>>已驳回</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">搜索</label>
                                 <div class="input-group search-box">
                                     <input type="text" name="search" class="form-control" placeholder="网站名称/域名/备案号" value="<?php echo htmlspecialchars($search); ?>">
-                                    <button class="btn btn-outline-secondary" type="submit">
-                                        <i class="fas fa-search"></i>
-                                    </button>
+                                    <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search"></i></button>
                                 </div>
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
@@ -214,8 +137,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         </form>
                     </div>
                 </div>
-                
-                <!-- 备案申请列表 -->
                 <div class="card">
                     <div class="card-body">
                         <div class="table-responsive">
@@ -223,49 +144,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 <thead>
                                     <tr>
                                         <th>备案号</th>
-                                        <th>网站名称</th>
-                                        <th>域名</th>
+                                        <th>网站名称 / 域名</th>
+                                        <th>申请人</th>
                                         <th>状态</th>
                                         <th>申请时间</th>
-                                        <th>审核人</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($applications as $app): ?>
-                                    <tr>
+                                    <tr data-id="<?php echo $app['id']; ?>">
                                         <td>
                                             <?php echo htmlspecialchars($app['number']); ?>
                                             <?php if (check_if_number_is_premium($app['number'])): ?>
-                                                <span class="badge bg-warning text-dark ms-2"><i class="fas fa-gem"></i> 靓号</span>
+                                                <span class="badge bg-warning text-dark ms-1" title="靓号"><i class="fas fa-gem"></i></span>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?php echo htmlspecialchars($app['website_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($app['domain']); ?></td>
                                         <td>
-                                            <span class="badge bg-<?php 
-                                                echo $app['status'] === 'approved' ? 'success' : 
-                                                     ($app['status'] === 'pending' ? 'warning' : 'danger'); 
-                                            ?> status-badge">
-                                                <?php echo $app['status'] === 'approved' ? '已通过' : 
-                                                      ($app['status'] === 'pending' ? '待审核' : '已驳回'); ?>
-                                            </span>
+                                            <strong><?php echo htmlspecialchars($app['website_name']); ?></strong>
+                                            <div class="text-muted small"><?php echo htmlspecialchars($app['domain']); ?></div>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($app['owner_name']); ?></td>
+                                        <td>
+                                            <?php 
+                                            $status_class = 'secondary'; $status_text = '未知';
+                                            switch ($app['status']) {
+                                                case 'approved': $status_class = 'success'; $status_text = '已通过'; break;
+                                                case 'pending': $status_class = 'warning'; $status_text = '待审核'; break;
+                                                case 'pending_payment': $status_class = 'info'; $status_text = '待付款'; break;
+                                                case 'rejected': $status_class = 'danger'; $status_text = '已驳回'; break;
+                                            }
+                                            ?>
+                                            <span class="badge bg-<?php echo $status_class; ?> status-badge"><?php echo $status_text; ?></span>
+                                            <?php if ($app['is_resubmitted']): ?>
+                                                <span class="badge bg-primary ms-1" title="用户修改后重新提交">重</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td><?php echo date('Y-m-d H:i', strtotime($app['created_at'])); ?></td>
-                                        <td><?php echo htmlspecialchars($app['reviewer'] ?? '-'); ?></td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <?php if ($app['status'] === 'pending'): ?>
-                                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal"
-                                                        data-id="<?php echo $app['id']; ?>">通过</button>
-                                                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal"
-                                                        data-id="<?php echo $app['id']; ?>">驳回</button>
+                                                <?php if ($app['status'] === 'pending' || $app['status'] === 'pending_payment'): ?>
+                                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal" data-id="<?php echo $app['id']; ?>">通过</button>
+                                                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#rejectModal" data-id="<?php echo $app['id']; ?>">驳回</button>
                                                 <?php endif; ?>
-                                                
-                                                <!-- 新增的编辑按钮 -->
-                                                <a href="application_edit.php?id=<?php echo $app['id']; ?>" class="btn btn-info">编辑</a>
-
-                                                <a href="applications.php?search=<?php echo urlencode($app['number']); ?>" class="btn btn-primary">查看</a>
+                                                <a href="application_edit.php?id=<?php echo $app['id']; ?>" class="btn btn-info">详情</a>
+                                                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="<?php echo $app['id']; ?>">删除</button>
                                             </div>
                                         </td>
                                     </tr>
@@ -273,33 +196,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 </tbody>
                             </table>
                         </div>
-                        
-                        <!-- 分页 -->
-                        <?php if ($totalPages > 1): ?>
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination justify-content-center mt-4">
-                                <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
-                                    <a class="page-link" href="<?php echo modify_url(['page' => $page - 1]); ?>">上一页</a>
-                                </li>
-                                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                                    <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                                        <a class="page-link" href="<?php echo modify_url(['page' => $i]); ?>"><?php echo $i; ?></a>
-                                    </li>
-                                <?php endfor; ?>
-                                <li class="page-item <?php echo $page >= $totalPages ? 'disabled' : ''; ?>">
-                                    <a class="page-link" href="<?php echo modify_url(['page' => $page + 1]); ?>">下一页</a>
-                                </li>
-                            </ul>
-                        </nav>
-                        <?php endif; ?>
+                        <div class="pagination-container">
+                            <?php $paginationObj = new Pagination($page, $pagination['total_items'], $perPage, '', $_GET); echo $paginationObj->render(); ?>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- 审核通过模态框 -->
-    <div class="modal fade" id="approveModal" tabindex="-1" aria-hidden="true">
+    <!-- Modals -->
+    <div class="modal fade" id="approveModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="post">
@@ -307,7 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <input type="hidden" name="action" value="approve">
                     <div class="modal-header">
                         <h5 class="modal-title">通过备案申请</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <p>确定要通过此备案申请吗？</p>
@@ -320,9 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             </div>
         </div>
     </div>
-
-    <!-- 驳回模态框 -->
-    <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="rejectModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="post">
@@ -330,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <input type="hidden" name="action" value="reject">
                     <div class="modal-header">
                         <h5 class="modal-title">驳回备案申请</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -346,22 +250,196 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             </div>
         </div>
     </div>
+    
+    <!-- 新增的删除确认弹窗 -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post">
+                    <input type="hidden" name="id" id="deleteId">
+                    <input type="hidden" name="action" value="delete">
+                    <div class="modal-header">
+                        <h5 class="modal-title">删除申请</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-danger"><strong>警告:</strong> 此操作不可恢复！</p>
+                        <p>您确定要永久删除此备案申请吗？</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-danger">确认删除</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义弹窗UI -->
+    <div id="custom-alert" class="custom-alert-overlay" style="display: none;">
+        <div class="custom-alert-box">
+            <div class="custom-alert-icon">
+                <i id="custom-alert-icon" class="fas"></i>
+            </div>
+            <p id="custom-alert-message"></p>
+            <button id="custom-alert-close" class="btn btn-primary">好的</button>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/toast.js"></script>
     <script>
-        // 模态框事件处理
-        const approveModal = document.getElementById('approveModal');
-        const rejectModal = document.getElementById('rejectModal');
+        // 自定义弹窗函数
+        function showCustomAlert(message, type = 'info') {
+            const customAlert = document.getElementById('custom-alert');
+            const customAlertMessage = document.getElementById('custom-alert-message');
+            const customAlertIcon = document.getElementById('custom-alert-icon');
+            const customAlertClose = document.getElementById('custom-alert-close');
+            
+            // 设置图标和样式
+            const iconMap = {
+                'success': 'fa-check-circle',
+                'error': 'fa-exclamation-circle',
+                'warning': 'fa-exclamation-triangle',
+                'info': 'fa-info-circle'
+            };
+            
+            customAlertIcon.className = `fas ${iconMap[type] || iconMap.info}`;
+            customAlertMessage.textContent = message;
+            customAlert.style.display = 'flex';
+            
+            // 设置样式
+            customAlert.className = `custom-alert-overlay ${type}`;
+        }
         
-        approveModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            document.getElementById('approveId').value = button.getAttribute('data-id');
+        document.addEventListener('DOMContentLoaded', function() {
+            const customAlertClose = document.getElementById('custom-alert-close');
+            customAlertClose.addEventListener('click', () => {
+                document.getElementById('custom-alert').style.display = 'none';
+            });
+            
+            const approveModalEl = document.getElementById('approveModal');
+            const rejectModalEl = document.getElementById('rejectModal');
+            const deleteModalEl = document.getElementById('deleteModal');
+
+            if (approveModalEl) {
+                approveModalEl.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    const id = button.getAttribute('data-id');
+                    approveModalEl.querySelector('#approveId').value = id;
+                });
+            }
+
+            if (rejectModalEl) {
+                rejectModalEl.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    const id = button.getAttribute('data-id');
+                    rejectModalEl.querySelector('#rejectId').value = id;
+                });
+            }
+
+            if (deleteModalEl) {
+                deleteModalEl.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    const id = button.getAttribute('data-id');
+                    deleteModalEl.querySelector('#deleteId').value = id;
+                });
+            }
+
+            // **关键修复**: 只对模态框内的表单进行AJAX处理
+            const modalForms = document.querySelectorAll('#approveModal form, #rejectModal form, #deleteModal form');
+            modalForms.forEach(form => {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(this);
+                    const submitBtn = this.querySelector('button[type="submit"]');
+                    const originalText = submitBtn.textContent;
+                    const modalElement = form.closest('.modal');
+                    const modalInstance = modalElement ? bootstrap.Modal.getInstance(modalElement) : null;
+                    
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = '处理中...';
+                    
+                    try {
+                        const response = await fetch(window.location.href, { // 使用当前页面的URL作为action
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        
+                        const result = await response.json();
+
+                        if (result.success) {
+                            const id = formData.get('id');
+                            const action = formData.get('action');
+                            
+                            // **核心逻辑**: 直接更新UI
+                            updateTableRow(id, action);
+                            
+                            if (modalInstance) {
+                                modalInstance.hide();
+                            }
+                            
+                            // 使用自定义的toast通知
+                            if (window.toast) {
+                                window.toast.success(result.message || '操作成功！');
+                            } else {
+                                showCustomAlert(result.message || '操作成功！', 'success');
+                            }
+                        } else {
+                            throw new Error(result.message || '操作失败，请重试');
+                        }
+                    } catch (error) {
+                        if (window.toast) {
+                            window.toast.error(error.message || '网络错误或服务器响应异常');
+                        } else {
+                            showCustomAlert(error.message || '网络错误或服务器响应异常', 'error');
+                        }
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                    }
+                });
+            });
         });
-        
-        rejectModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            document.getElementById('rejectId').value = button.getAttribute('data-id');
-        });
+
+        /**
+         * 更新表格行的函数 (优化版)
+         * @param {string} id - 申请ID
+         * @param {string} action - 操作类型 ('approve', 'reject' 或 'delete')
+         */
+        function updateTableRow(id, action) {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            if (!row) return;
+
+            if (action === 'delete') {
+                row.style.transition = 'opacity 0.5s ease';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 500);
+                return;
+            }
+
+            const statusBadge = row.querySelector('.status-badge');
+            const actionButtonsContainer = row.querySelector('.btn-group');
+
+            if (statusBadge) {
+                if (action === 'approve') {
+                    statusBadge.className = 'badge bg-success status-badge';
+                    statusBadge.textContent = '已通过';
+                } else if (action === 'reject') {
+                    statusBadge.className = 'badge bg-danger status-badge';
+                    statusBadge.textContent = '已驳回';
+                }
+            }
+            
+            // 移除操作按钮
+            if (actionButtonsContainer) {
+                actionButtonsContainer.innerHTML = `<a href="application_edit.php?id=${id}" class="btn btn-info">详情</a> <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="${id}">删除</button>`;
+            }
+        }
     </script>
 </body>
 </html>

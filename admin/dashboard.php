@@ -1,45 +1,21 @@
 <?php
-require_once __DIR__.'/../includes/auth.php';
-require_once __DIR__.'/../includes/functions.php';
+require_once __DIR__.'/../includes/bootstrap.php';
 
 // 检查登录状态
 require_login();
 
-// 缓存5分钟
-$cacheTime = 300;
-$cacheDir = __DIR__.'/../cache'; // 定义 cache 目录
-$cacheFile = $cacheDir.'/dashboard_stats.cache'; // 定义 cache 文件路径
-
-// 检查并创建缓存目录
-if (!is_dir($cacheDir)) {
-    mkdir($cacheDir, 0755, true);
+try {
+    // 使用ApplicationManager获取统计数据
+    $appManager = new ApplicationManager();
+    $stats = $appManager->getStats();
+    
+    // 获取最近5条备案申请
+    $recentResult = $appManager->getList([], 1, 5);
+    $recentApps = $recentResult['applications'];
+    
+} catch (Exception $e) {
+    handle_error('加载仪表盘数据失败: ' . $e->getMessage());
 }
-$db = db();
-
-if (!file_exists($cacheFile) || (time() - filemtime($cacheFile)) > $cacheTime) {
-    // 缓存失效或不存在，从数据库查询
-    $stats = $db->query("
-        SELECT 
-            COUNT(*) as total,
-            SUM(status = 'pending') as pending,
-            SUM(status = 'approved') as approved,
-            SUM(status = 'rejected') as rejected
-        FROM icp_applications
-    ")->fetch();
-    file_put_contents($cacheFile, json_encode($stats));
-} else {
-    // 从缓存读取
-    $stats = json_decode(file_get_contents($cacheFile), true);
-}
-
-// 获取最近5条备案申请
-$recentApps = $db->query("
-    SELECT a.*, u.username as reviewer 
-    FROM icp_applications a
-    LEFT JOIN admin_users u ON a.reviewed_by = u.id
-    ORDER BY created_at DESC
-    LIMIT 5
-")->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -49,54 +25,7 @@ $recentApps = $db->query("
     <title>Yuan-ICP 仪表盘</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-        }
-        .sidebar {
-            min-height: 100vh;
-            background: #343a40;
-            color: white;
-        }
-        .sidebar-header {
-            padding: 20px;
-            background: #212529;
-        }
-        .sidebar a {
-            color: rgba(255, 255, 255, 0.8);
-            padding: 10px 15px;
-            display: block;
-            text-decoration: none;
-            transition: all 0.3s;
-        }
-        .sidebar a:hover {
-            color: white;
-            background: #495057;
-        }
-        .sidebar .active a {
-            color: white;
-            background: #007bff;
-        }
-        .main-content {
-            padding: 20px;
-        }
-        .stat-card {
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .stat-card i {
-            font-size: 2.5rem;
-            opacity: 0.8;
-        }
-        .stat-card.total { background: #20c997; }
-        .stat-card.pending { background: #fd7e14; }
-        .stat-card.approved { background: #28a745; }
-        .stat-card.rejected { background: #dc3545; }
-    </style>
+    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
     <div class="container-fluid">
@@ -109,6 +38,15 @@ $recentApps = $db->query("
             <!-- 主内容区 -->
             <div class="col-md-10 main-content">
                 <h2 class="mb-4">仪表盘</h2>
+                
+                <!-- 安装目录警告 -->
+                <?php if (file_exists(__DIR__.'/../install/')): ?>
+                <div class="alert alert-warning alert-dismissible fade show" role="alert" id="installWarning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>安全警告！</strong> 检测到安装目录仍然存在，这可能会带来安全风险。请立即删除 <code>install</code> 目录。
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
+                </div>
+                <?php endif; ?>
                 
                 <!-- 统计卡片 -->
                 <div class="row">
@@ -158,6 +96,30 @@ $recentApps = $db->query("
                     </div>
                 </div>
                 
+                <!-- 图表区域 -->
+                <div class="row mt-4 chart-container">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">近7日申请量趋势</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="trendChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">备案状态分布</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="statusChart" width="300" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- 最近申请 -->
                 <div class="card mt-4">
                     <div class="card-header">
@@ -171,6 +133,7 @@ $recentApps = $db->query("
                                         <th>备案号</th>
                                         <th>网站名称</th>
                                         <th>域名</th>
+                                        <th>申请人</th>
                                         <th>状态</th>
                                         <th>申请时间</th>
                                         <th>操作</th>
@@ -182,13 +145,11 @@ $recentApps = $db->query("
                                         <td><?php echo htmlspecialchars($app['number']); ?></td>
                                         <td><?php echo htmlspecialchars($app['website_name']); ?></td>
                                         <td><?php echo htmlspecialchars($app['domain']); ?></td>
+                                        <td><?php echo htmlspecialchars($app['owner_name']); ?></td>
                                         <td>
-                                            <span class="badge bg-<?php 
-                                                echo $app['status'] === 'approved' ? 'success' : 
-                                                     ($app['status'] === 'pending' ? 'warning' : 'danger'); 
-                                            ?>">
-                                                <?php echo $app['status'] === 'approved' ? '已通过' : 
-                                                      ($app['status'] === 'pending' ? '待审核' : '已驳回'); ?>
+                                            <!-- 重要修改：直接使用 ApplicationManager 提供的 class 和 text -->
+                                            <span class="badge bg-<?php echo htmlspecialchars($app['status_class']); ?>">
+                                                <?php echo htmlspecialchars($app['status_text']); ?>
                                             </span>
                                         </td>
                                         <td><?php echo date('Y-m-d H:i', strtotime($app['created_at'])); ?></td>
@@ -207,5 +168,103 @@ $recentApps = $db->query("
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // 加载图表数据
+        async function loadChartData() {
+            try {
+                const response = await fetch('../api/get_dashboard_stats.php');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const data = result.data;
+                    
+                    // 初始化趋势图
+                    initTrendChart(data.trend);
+                    
+                    // 初始化状态分布图
+                    initStatusChart(data.statusDistribution);
+                } else {
+                    console.error('加载图表数据失败:', result.error);
+                }
+            } catch (error) {
+                console.error('加载图表数据失败:', error);
+            }
+        }
+        
+        // 初始化趋势图
+        function initTrendChart(trendData) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trendData.labels,
+                    datasets: [{
+                        label: '申请数量',
+                        data: trendData.data,
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 初始化状态分布图
+        function initStatusChart(statusData) {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: statusData.labels,
+                    datasets: [{
+                        data: statusData.data,
+                        backgroundColor: statusData.colors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 页面加载完成后初始化图表
+        document.addEventListener('DOMContentLoaded', function() {
+            loadChartData();
+        });
+    </script>
 </body>
 </html>

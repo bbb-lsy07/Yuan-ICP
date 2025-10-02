@@ -1,6 +1,5 @@
 <?php
-require_once __DIR__.'/../includes/auth.php';
-require_once __DIR__.'/../includes/functions.php';
+require_once __DIR__.'/../includes/bootstrap.php';
 
 // 检查登录状态，确保只有管理员可以访问
 require_login();
@@ -104,7 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $application) {
             <!-- 主内容区 -->
             <div class="col-md-10 main-content">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2>编辑备案申请</h2>
+                    <h2>
+                        编辑备案申请
+                        <?php if ($application['is_resubmitted']): ?>
+                            <span class="badge bg-info align-middle">用户已修改并重新提交</span>
+                        <?php endif; ?>
+                    </h2>
                     <a href="applications.php" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left"></i> 返回列表
                     </a>
@@ -160,6 +164,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $application) {
                                 <textarea class="form-control" id="description" name="description" rows="3"><?php echo htmlspecialchars($application['description']); ?></textarea>
                             </div>
 
+                            <!-- 新增开始 -->
+                            <?php if (!empty($application['payment_platform']) || !empty($application['transaction_id'])): ?>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">赞助平台</label>
+                                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($application['payment_platform'] ?? 'N/A'); ?>" disabled readonly>
+                                </div>
+                                 <div class="col-md-6 mb-3">
+                                    <label class="form-label">订单号</label>
+                                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($application['transaction_id'] ?? 'N/A'); ?>" disabled readonly>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                            <!-- 新增结束 -->
+
                              <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="owner_name" class="form-label">所有者名称</label>
@@ -173,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $application) {
                             
                             <div class="mb-3">
                                 <label for="reject_reason" class="form-label">驳回原因 (如果状态为"已驳回")</label>
-                                <textarea class="form-control" id="reject_reason" name="reject_reason" rows="3"><?php echo htmlspecialchars($application['reject_reason']); ?></textarea>
+                                <textarea class="form-control" id="reject_reason" name="reject_reason" rows="3"><?php echo htmlspecialchars($application['reject_reason'] ?? ''); ?></textarea>
                             </div>
 
                             <div class="row">

@@ -36,6 +36,11 @@ class ThemeManager {
      * @return string
      */
     public static function getActiveTheme() {
+        // 检查是否为预览模式
+        if (isset($_SESSION['preview_theme']) && isset($_GET['preview_theme'])) {
+            return $_SESSION['preview_theme'];
+        }
+        
         try {
             $db = db();
             $stmt = $db->query("SELECT config_value FROM system_config WHERE config_key = 'active_theme'");
@@ -137,6 +142,104 @@ class ThemeManager {
     }
     
     /**
+     * 获取主题选项
+     * @param string $themeName 主题名称（可选，默认当前主题）
+     * @return array
+     */
+    public static function getThemeOptions($themeName = null) {
+        $theme = $themeName ?: self::getActiveTheme();
+        $themeFile = __DIR__.'/../themes/'.$theme.'/theme.json';
+        
+        if (!file_exists($themeFile)) {
+            return [];
+        }
+        
+        $themeInfo = json_decode(file_get_contents($themeFile), true);
+        return $themeInfo['options'] ?? [];
+    }
+    
+    /**
+     * 获取主题选项值
+     * @param string $optionKey 选项键名
+     * @param mixed $default 默认值
+     * @param string $themeName 主题名称（可选）
+     * @return mixed
+     */
+    public static function getThemeOption($optionKey, $default = null, $themeName = null) {
+        $theme = $themeName ?: self::getActiveTheme();
+        
+        // 检查是否为预览模式
+        if (isset($_SESSION['preview_theme']) && isset($_GET['preview_theme']) && 
+            $_SESSION['preview_theme'] === $theme && isset($_SESSION['preview_options'][$optionKey])) {
+            return $_SESSION['preview_options'][$optionKey];
+        }
+        
+        $db = db();
+        
+        try {
+            $stmt = $db->prepare("SELECT config_value FROM theme_options WHERE theme_name = ? AND option_key = ?");
+            $stmt->execute([$theme, $optionKey]);
+            $value = $stmt->fetchColumn();
+            return $value !== false ? $value : $default;
+        } catch (Exception $e) {
+            return $default;
+        }
+    }
+    
+    /**
+     * 设置主题选项值
+     * @param string $optionKey 选项键名
+     * @param mixed $value 选项值
+     * @param string $themeName 主题名称（可选）
+     * @return bool
+     */
+    public static function setThemeOption($optionKey, $value, $themeName = null) {
+        $theme = $themeName ?: self::getActiveTheme();
+        $db = db();
+        
+        try {
+            // 确保表存在
+            $db->exec("
+                CREATE TABLE IF NOT EXISTS theme_options (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    theme_name VARCHAR(50) NOT NULL,
+                    option_key VARCHAR(100) NOT NULL,
+                    config_value TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(theme_name, option_key)
+                )
+            ");
+            
+            $stmt = $db->prepare("
+                REPLACE INTO theme_options (theme_name, option_key, config_value, updated_at) 
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            ");
+            return $stmt->execute([$theme, $optionKey, $value]);
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+    
+    /**
+     * 获取所有主题选项值
+     * @param string $themeName 主题名称（可选）
+     * @return array
+     */
+    public static function getAllThemeOptions($themeName = null) {
+        $theme = $themeName ?: self::getActiveTheme();
+        $db = db();
+        
+        try {
+            $stmt = $db->prepare("SELECT option_key, config_value FROM theme_options WHERE theme_name = ?");
+            $stmt->execute([$theme]);
+            return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+    
+    /**
      * 渲染主题模板
      * @param string $template 模板名称
      * @param array $data 模板数据
@@ -153,19 +256,46 @@ class ThemeManager {
             }
         }
         
-        if (file_exists($templateFile)) {
-            extract($data);
-            include $templateFile;
-        } else {
+        // 增加一个辅助函数，用于获取主题选项
+        if (!function_exists('get_theme_option')) {
+            function get_theme_option($key, $default = null) {
+                return ThemeManager::getThemeOption($key, $default);
+            }
+        }
+        
+        if (!file_exists($templateFile)) {
             // 回退到默认模板
             $defaultTemplate = __DIR__.'/../themes/default/templates/'.$template.'.php';
             if (file_exists($defaultTemplate)) {
-                extract($data);
-                include $defaultTemplate;
+                $templateFile = $defaultTemplate;
             } else {
-                // 抛出更明确的错误
                 throw new Exception("Template file not found for '{$template}' in both '{$theme}' and 'default' themes.");
             }
         }
+        
+        extract($data);
+
+        // --- START: 新增的核心修改 ---
+        // 对非 header/footer 的主内容模板启用内容过滤
+        if ($template !== 'header' && $template !== 'footer') {
+            ob_start(); // 开始输出缓冲
+            include $templateFile;
+            $content = ob_get_clean(); // 获取缓冲区内容并清空
+            
+            // 执行 'the_content' 钩子, 传递内容和当前模板及数据
+            $result = PluginHooks::run('the_content', [
+                'content' => $content,
+                'template' => $template,
+                'data' => $data
+            ]);
+            
+            // 只输出处理后的 content
+            echo $result['content'];
+
+        } else {
+            // Header 和 Footer 直接输出
+            include $templateFile;
+        }
+        // --- END: 新增的核心修改 ---
     }
 }

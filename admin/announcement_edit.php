@@ -1,6 +1,5 @@
 <?php
-require_once __DIR__.'/../includes/auth.php';
-require_once __DIR__.'/../includes/functions.php';
+require_once __DIR__.'/../includes/bootstrap.php';
 
 // 检查登录状态
 require_login();
@@ -23,27 +22,55 @@ if (isset($_GET['id'])) {
 
 // 处理表单提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = trim($_POST['title'] ?? '');
-    $content = trim($_POST['content'] ?? '');
-    $is_pinned = isset($_POST['is_pinned']) ? 1 : 0;
-    
-    // 验证输入
-    if (empty($title)) {
-        $error = '标题不能为空';
+    // 验证CSRF令牌
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        $error = '无效的请求，请刷新页面重试';
     } else {
-        if ($announcement['id'] > 0) {
-            // 更新现有公告
-            $stmt = $db->prepare("UPDATE announcements SET title = ?, content = ?, is_pinned = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
-            $stmt->execute([$title, $content, $is_pinned, $announcement['id']]);
-        } else {
-            // 新增公告
-            $stmt = $db->prepare("INSERT INTO announcements (title, content, is_pinned, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
-            $stmt->execute([$title, $content, $is_pinned]);
-            $announcement['id'] = $db->lastInsertId();
-        }
+        $title = trim($_POST['title'] ?? '');
+        $content = trim($_POST['content'] ?? '');
+        $is_pinned = isset($_POST['is_pinned']) ? 1 : 0;
         
-        // 重定向到公告列表
-        redirect('announcements.php');
+        // 严格验证输入
+        if (empty($title)) {
+            $error = '标题不能为空';
+        } elseif (strlen($title) > 200) {
+            $error = '标题不能超过200个字符';
+        } elseif (strlen($content) > 10000) {
+            $error = '内容不能超过10000个字符';
+        } elseif (!preg_match('/^[\x{4e00}-\x{9fa5}a-zA-Z0-9\s\-_.,!?()（）]+$/u', $title)) {
+            $error = '标题包含非法字符，只允许中文、英文、数字、空格和常用标点符号';
+        } else {
+            // 过滤HTML标签和特殊字符
+            $title = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+            // 内容允许HTML，但需要清理危险标签
+            $content = strip_tags($content, '<p><br><strong><b><em><i><u><ul><ol><li><h1><h2><h3><h4><h5><h6><a><img><blockquote><pre><code>');
+            
+            // 验证链接安全性
+            if (preg_match_all('/<a[^>]+href=["\']([^"\']+)["\'][^>]*>/i', $content, $matches)) {
+                foreach ($matches[1] as $url) {
+                    if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('/^https?:\/\//', $url)) {
+                        $error = '链接地址格式不正确，只允许http和https协议';
+                        break;
+                    }
+                }
+            }
+            
+            if (!isset($error)) {
+                if ($announcement['id'] > 0) {
+                    // 更新现有公告
+                    $stmt = $db->prepare("UPDATE announcements SET title = ?, content = ?, is_pinned = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+                    $stmt->execute([$title, $content, $is_pinned, $announcement['id']]);
+                } else {
+                    // 新增公告
+                    $stmt = $db->prepare("INSERT INTO announcements (title, content, is_pinned, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+                    $stmt->execute([$title, $content, $is_pinned]);
+                    $announcement['id'] = $db->lastInsertId();
+                }
+                
+                // 重定向到公告列表
+                redirect('announcements.php');
+            }
+        }
     }
 }
 ?>
@@ -55,93 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title><?php echo $announcement['id'] ? '编辑' : '新增'; ?>公告 - Yuan-ICP</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
-<style>
-    .form-container {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f8f9fa;
-    }
-    .sidebar {
-        min-height: 100vh;
-        background: #343a40;
-        color: white;
-    }
-    .sidebar-header {
-        padding: 20px;
-        background: #212529;
-    }
-    .sidebar a {
-        color: rgba(255, 255, 255, 0.8);
-        padding: 10px 15px;
-        display: block;
-        text-decoration: none;
-        transition: all 0.3s;
-    }
-    .sidebar a:hover {
-        color: white;
-        background: #495057;
-    }
-    .sidebar .active a {
-        color: white;
-        background: #007bff;
-    }
-    .main-content {
-        padding: 20px;
-    }
-    .stat-card {
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-        color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .stat-card i {
-        font-size: 2.5rem;
-        opacity: 0.8;
-    }
-    .stat-card.total { background: #20c997; }
-    .stat-card.pending { background: #fd7e14; }
-    .stat-card.approved { background: #28a745; }
-    .stat-card.rejected { background: #dc3545; }
-    
-    /* 自定义富文本编辑器样式 */
-    .editor-toolbar {
-        border: 1px solid #ced4da;
-        border-bottom: none;
-        padding: 8px;
-        background-color: #f8f9fa;
-        border-radius: 4px 4px 0 0;
-    }
-    .editor-content {
-        border: 1px solid #ced4da;
-        min-height: 300px;
-        padding: 12px;
-        background-color: #fff;
-        outline: none;
-    }
-    .editor-content:focus {
-        border-color: #86b7fe;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-    }
-    .toolbar-button {
-        background: none;
-        border: 1px solid #ddd;
-        padding: 4px 8px;
-        margin-right: 4px;
-        cursor: pointer;
-        border-radius: 3px;
-    }
-    .toolbar-button:hover {
-        background-color: #e9ecef;
-    }
-    .toolbar-button.active {
-        background-color: #0d6efd;
-        color: white;
-    }
-</style>
+    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
     <div class="container-fluid">
@@ -165,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="card form-container">
                     <div class="card-body">
                         <form method="post">
+                            <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                             <div class="mb-3">
                                 <label for="title" class="form-label">标题</label>
                                 <input type="text" class="form-control" id="title" name="title" 
@@ -202,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         </button>
                                     </div>
                                     <div class="editor-content" id="editor" contenteditable="true"><?php 
-                                        echo htmlspecialchars($announcement['content']); 
+                                        echo $announcement['content']; 
                                     ?></div>
                                     <input type="hidden" id="content" name="content" value="<?php echo htmlspecialchars($announcement['content']); ?>">
                                 </div>

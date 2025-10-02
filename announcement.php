@@ -2,8 +2,7 @@
 // announcement.php
 
 // 引入核心文件
-require_once __DIR__.'/includes/functions.php';
-require_once __DIR__.'/includes/theme_manager.php';
+require_once __DIR__.'/includes/bootstrap.php';
 
 try {
     $db = db();

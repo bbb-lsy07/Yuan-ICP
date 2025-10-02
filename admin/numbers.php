@@ -1,57 +1,75 @@
 <?php
-require_once __DIR__.'/../includes/auth.php';
-require_once __DIR__.'/../includes/functions.php';
+require_once __DIR__.'/../includes/bootstrap.php';
 
 require_login();
-$db = db();
+
 $message = '';
 
-// 处理删除或状态切换操作
+// 处理AJAX请求
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $id = intval($_POST['id'] ?? 0);
+    header('Content-Type: application/json; charset=utf-8');
     
-    if ($action === 'delete' && $id > 0) {
-        $stmt = $db->prepare("DELETE FROM selectable_numbers WHERE id = ?");
-        $stmt->execute([$id]);
-        $message = "号码已删除。";
-    } elseif ($action === 'toggle_premium' && $id > 0) {
-        $stmt = $db->prepare("UPDATE selectable_numbers SET is_premium = NOT is_premium WHERE id = ?");
-        $stmt->execute([$id]);
-        $message = "号码靓号状态已更新。";
+    try {
+        $action = $_POST['action'] ?? '';
+        $id = intval($_POST['id'] ?? 0);
+        
+        if (!$id) {
+            throw new Exception('无效的号码ID');
+        }
+        
+        $db = db();
+        
+        if ($action === 'delete') {
+            $stmt = $db->prepare("DELETE FROM selectable_numbers WHERE id = ?");
+            $stmt->execute([$id]);
+            echo json_encode(['success' => true, 'message' => '号码已删除']);
+        } elseif ($action === 'toggle_premium') {
+            $stmt = $db->prepare("UPDATE selectable_numbers SET is_premium = NOT is_premium WHERE id = ?");
+            $stmt->execute([$id]);
+            echo json_encode(['success' => true, 'message' => '靓号状态已更新']);
+        } else {
+            throw new Exception('无效的操作');
+        }
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-    redirect('numbers.php?message=' . urlencode($message));
+    exit;
 }
 
-if(isset($_GET['message'])) {
-    $message = htmlspecialchars($_GET['message']);
-}
-
-// 分页和搜索逻辑
+// 获取查询参数
 $page = max(1, intval($_GET['page'] ?? 1));
 $search = trim($_GET['search'] ?? '');
 $perPage = 20;
-$offset = ($page - 1) * $perPage;
 
-$where = '';
-$params = [];
-if (!empty($search)) {
-    $where = "WHERE number LIKE ?";
-    $params[] = "%$search%";
+try {
+    $db = db();
+    $where = '';
+    $params = [];
+    
+    if (!empty($search)) {
+        $where = "WHERE number LIKE ?";
+        $params[] = "%$search%";
+    }
+
+    // 获取总数
+    $countQuery = "SELECT COUNT(*) FROM selectable_numbers $where";
+    $totalStmt = $db->prepare($countQuery);
+    $totalStmt->execute($params);
+    $totalItems = $totalStmt->fetchColumn();
+
+    // 使用分页类
+    $pagination = new Pagination($page, $totalItems, $perPage, '', $_GET);
+
+    // 获取当前页数据
+    $query = "SELECT * FROM selectable_numbers $where ORDER BY created_at DESC " . $pagination->getSqlLimit();
+    $stmt = $db->prepare($query);
+    $stmt->execute($params);
+    $numbers = $stmt->fetchAll();
+    
+} catch (Exception $e) {
+    handle_error('加载号码列表失败: ' . $e->getMessage());
 }
-
-// 获取总数
-$countQuery = "SELECT COUNT(*) FROM selectable_numbers $where";
-$totalStmt = $db->prepare($countQuery);
-$totalStmt->execute($params);
-$totalItems = $totalStmt->fetchColumn();
-$totalPages = ceil($totalItems / $perPage);
-
-// 获取当前页数据
-$query = "SELECT * FROM selectable_numbers $where ORDER BY created_at DESC LIMIT $perPage OFFSET $offset";
-$stmt = $db->prepare($query);
-$stmt->execute($params);
-$numbers = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -76,7 +94,7 @@ $numbers = $stmt->fetchAll();
                     <a href="settings.php?tab=numbers" class="btn btn-primary"><i class="fas fa-plus"></i> 添加新号码</a>
                 </div>
                 
-                <?php if ($message): ?><div class="alert alert-success"><?php echo $message; ?></div><?php endif; ?>
+
 
                 <div class="card mb-4">
                     <div class="card-body">
@@ -120,15 +138,14 @@ $numbers = $stmt->fetchAll();
                                         </td>
                                         <td><?php echo date('Y-m-d H:i', strtotime($num['created_at'])); ?></td>
                                         <td>
-                                            <form method="post" class="d-inline">
-                                                <input type="hidden" name="id" value="<?php echo $num['id']; ?>">
-                                                <button type="submit" name="action" value="toggle_premium" class="btn btn-sm btn-outline-warning">
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-warning" onclick="togglePremium(<?php echo $num['id']; ?>)">
                                                     <i class="fas fa-gem"></i> 切换
                                                 </button>
-                                                <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除这个号码吗？')">
+                                                <button type="button" class="btn btn-outline-danger" onclick="deleteNumber(<?php echo $num['id']; ?>)">
                                                     <i class="fas fa-trash"></i> 删除
                                                 </button>
-                                            </form>
+                                            </div>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -136,18 +153,68 @@ $numbers = $stmt->fetchAll();
                             </table>
                         </div>
                         
-                        <?php if ($totalPages > 1): ?>
-                        <nav class="mt-4">
-                            <ul class="pagination justify-content-center">
-                                <!-- Pagination links -->
-                            </ul>
-                        </nav>
-                        <?php endif; ?>
+                        <div class="pagination-container">
+                            <?php echo $pagination->render(); ?>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/admin-api.js"></script>
+    <script>
+        const api = new AdminAPI();
+        
+        function togglePremium(id) {
+            if (confirm('确定要切换此号码的靓号状态吗？')) {
+                const formData = new FormData();
+                formData.append('action', 'toggle_premium');
+                formData.append('id', id);
+                
+                api.request('numbers.php', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {}
+                })
+                .then(response => {
+                    if (response.success) {
+                        api.showSuccess(response.message);
+                        location.reload();
+                    } else {
+                        api.showError(response.message);
+                    }
+                })
+                .catch(error => {
+                    api.showError(error.message);
+                });
+            }
+        }
+        
+        function deleteNumber(id) {
+            if (confirm('确定要删除这个号码吗？')) {
+                const formData = new FormData();
+                formData.append('action', 'delete');
+                formData.append('id', id);
+                
+                api.request('numbers.php', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {}
+                })
+                .then(response => {
+                    if (response.success) {
+                        api.showSuccess(response.message);
+                        location.reload();
+                    } else {
+                        api.showError(response.message);
+                    }
+                })
+                .catch(error => {
+                    api.showError(error.message);
+                });
+            }
+        }
+    </script>
 </body>
 </html>

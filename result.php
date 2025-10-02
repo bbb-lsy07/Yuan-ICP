@@ -1,6 +1,5 @@
 <?php
-require_once __DIR__.'/includes/functions.php';
-require_once __DIR__.'/includes/theme_manager.php';
+require_once __DIR__.'/includes/bootstrap.php';
 
 $db = db();
 
@@ -21,16 +20,14 @@ if (!$application) {
     exit;
 }
 
-// 生成需要放置的HTML代码
-$site_url = $db->query("SELECT config_value FROM system_config WHERE config_key = 'site_url'")->fetchColumn();
-$html_code = htmlspecialchars('<a href="'.($site_url ?: 'https://icp.example.com').'/query.php?icp_number='.$application['number'].'" target="_blank">备案号: '.$application['number'].'</a>');
+$config = get_config();
 
 // 准备传递给模板的数据
 $data = [
     'application' => $application,
-    'html_code' => $html_code,
     'page_title' => '备案结果 - ' . ($config['site_name'] ?? 'Yuan-ICP'),
-    'active_page' => 'result'
+    'active_page' => 'apply', // 修改为apply，让导航保持高亮
+    'config' => $config
 ];
 
 // 渲染页面

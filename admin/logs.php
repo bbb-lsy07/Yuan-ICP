@@ -1,57 +1,81 @@
 <?php
-require_once __DIR__.'/../includes/auth.php';
-require_once __DIR__.'/../includes/functions.php';
+require_once __DIR__.'/../includes/bootstrap.php';
 
 // 检查管理员权限
 check_admin_auth();
 
-$db = db();
 $message = '';
 
-// 检查并创建 admin_logs 表（如果不存在）
-$tableCheck = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='admin_logs'")->fetch();
-if (!$tableCheck) {
-    $db->exec("
-        CREATE TABLE admin_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            action TEXT,
-            target TEXT,
-            details TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ");
-}
-
-// 处理删除日志操作
-if (isset($_GET['action']) && $_GET['action'] === 'delete') {
-    $stmt = $db->prepare("DELETE FROM admin_logs");
-    if ($stmt->execute()) {
-        $message = '所有日志已清除';
+try {
+    $db = db();
+    
+    // 检查并创建 admin_logs 表（如果不存在）
+    $tableCheck = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='admin_logs'")->fetch();
+    if (!$tableCheck) {
+        $db->exec("
+            CREATE TABLE admin_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                action TEXT,
+                target TEXT,
+                details TEXT,
+                ip_address VARCHAR(45),
+                user_agent TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+        $message = "已创建 admin_logs 表";
     } else {
-        $message = '清除日志失败';
+        // 检查并添加缺失的列，以兼容旧版本
+        $columns_info = $db->query("PRAGMA table_info(admin_logs);")->fetchAll();
+        $columns = array_column($columns_info, 'name');
+        if (!in_array('ip_address', $columns)) {
+            $db->exec("ALTER TABLE admin_logs ADD COLUMN ip_address VARCHAR(45) NULL;");
+        }
+        if (!in_array('user_agent', $columns)) {
+            $db->exec("ALTER TABLE admin_logs ADD COLUMN user_agent TEXT NULL;");
+        }
     }
+
+    // 处理删除日志操作 - 重定向到统一API
+    if (isset($_GET['action']) && $_GET['action'] === 'delete') {
+        $_POST['action'] = 'clear_logs';
+        include __DIR__.'/../api/admin.php';
+        exit;
+    }
+
+    // 获取日志列表（最近100条）
+    $logs = $db->query("
+        SELECT l.*, u.username 
+        FROM admin_logs l 
+        LEFT JOIN admin_users u ON l.user_id = u.id 
+        ORDER BY l.created_at DESC 
+        LIMIT 100
+    ")->fetchAll();
+
+    // 获取日志统计
+    $stats = $db->query("
+        SELECT 
+            COUNT(*) as total,
+            COUNT(CASE WHEN action = 'login' THEN 1 END) as login_count,
+            COUNT(CASE WHEN action = 'create' THEN 1 END) as create_count,
+            COUNT(CASE WHEN action = 'update' THEN 1 END) as update_count,
+            COUNT(CASE WHEN action = 'delete' THEN 1 END) as delete_count
+        FROM admin_logs
+    ")->fetch();
+    
+} catch (Exception $e) {
+    $message = '加载日志数据失败: ' . $e->getMessage();
+    $logs = [];
+    $stats = [
+        'total' => 0,
+        'login_count' => 0,
+        'create_count' => 0,
+        'update_count' => 0,
+        'delete_count' => 0
+    ];
+    error_log('日志页面错误: ' . $e->getMessage());
 }
-
-// 获取日志列表（最近100条）
-$logs = $db->query("
-    SELECT l.*, u.username 
-    FROM admin_logs l 
-    LEFT JOIN admin_users u ON l.user_id = u.id 
-    ORDER BY l.created_at DESC 
-    LIMIT 100
-")->fetchAll();
-
-// 获取日志统计
-$stats = $db->query("
-    SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN action = 'login' THEN 1 END) as login_count,
-        COUNT(CASE WHEN action = 'create' THEN 1 END) as create_count,
-        COUNT(CASE WHEN action = 'update' THEN 1 END) as update_count,
-        COUNT(CASE WHEN action = 'delete' THEN 1 END) as delete_count
-    FROM admin_logs
-")->fetch();
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -61,62 +85,7 @@ $stats = $db->query("
     <title>操作日志 - Yuan-ICP</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
-<style>
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f8f9fa;
-    }
-    .sidebar {
-        min-height: 100vh;
-        background: #343a40;
-        color: white;
-    }
-    .sidebar-header {
-        padding: 20px;
-        background: #212529;
-    }
-    .sidebar a {
-        color: rgba(255, 255, 255, 0.8);
-        padding: 10px 15px;
-        display: block;
-        text-decoration: none;
-        transition: all 0.3s;
-    }
-    .sidebar a:hover {
-        color: white;
-        background: #495057;
-    }
-    .sidebar .active a {
-        color: white;
-        background: #007bff;
-    }
-    .main-content {
-        padding: 20px;
-    }
-    .stat-card {
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-        color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .stat-card i {
-        font-size: 2.5rem;
-        opacity: 0.8;
-    }
-    .stat-card.total { background: #20c997; }
-    .stat-card.login { background: #0d6efd; }
-    .stat-card.create { background: #fd7e14; }
-    .stat-card.update { background: #ffc107; color: #212529; }
-    .stat-card.delete { background: #dc3545; }
-    .log-table th {
-        background-color: #e9ecef;
-    }
-    .log-action-login { color: #0d6efd; }
-    .log-action-create { color: #fd7e14; }
-    .log-action-update { color: #ffc107; }
-    .log-action-delete { color: #dc3545; }
-</style>
+    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
     <div class="container-fluid">
@@ -210,7 +179,20 @@ $stats = $db->query("
                     </div>
                     <div class="card-body">
                         <?php if (empty($logs)): ?>
-                        <p class="text-center text-muted py-3">暂无操作日志</p>
+                        <div class="text-center text-muted py-3">
+                            <p>暂无操作日志</p>
+                            <small class="text-muted">
+                                调试信息：数据库连接状态 - 
+                                <?php 
+                                try {
+                                    $test_db = db();
+                                    echo "正常";
+                                } catch (Exception $e) {
+                                    echo "错误: " . $e->getMessage();
+                                }
+                                ?>
+                            </small>
+                        </div>
                         <?php else: ?>
                         <div class="table-responsive">
                             <table class="table table-hover log-table">
@@ -220,6 +202,7 @@ $stats = $db->query("
                                         <th>操作用户</th>
                                         <th>操作类型</th>
                                         <th>操作对象</th>
+                                        <th>IP地址</th>
                                         <th>详细信息</th>
                                     </tr>
                                 </thead>
@@ -244,6 +227,7 @@ $stats = $db->query("
                                             </span>
                                         </td>
                                         <td><?php echo htmlspecialchars($log['target'] ?? ''); ?></td>
+                                        <td><?php echo htmlspecialchars($log['ip_address'] ?? 'N/A'); ?></td>
                                         <td><?php echo htmlspecialchars($log['details'] ?? ''); ?></td>
                                     </tr>
                                     <?php endforeach; ?>

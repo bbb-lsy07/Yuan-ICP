@@ -15,7 +15,7 @@ CREATE INDEX idx_announcements_is_pinned ON announcements(is_pinned);
 CREATE INDEX idx_announcements_created_at ON announcements(created_at);
 
 -- plugins表索引
-CREATE INDEX idx_plugins_status ON plugins(status);
+CREATE INDEX idx_plugins_is_active ON plugins(is_active);
 CREATE INDEX idx_plugins_name ON plugins(name);
 
 -- system_config表索引

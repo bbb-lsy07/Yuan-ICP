@@ -1,5 +1,4 @@
--- Yuan-ICP 数据库初始化脚本
--- 支持MySQL/PostgreSQL/SQLite
+-- Yuan-ICP 数据库初始化脚本 V2 (移除了会员系统)
 
 -- 管理员表
 CREATE TABLE IF NOT EXISTS admin_users (
@@ -7,7 +6,6 @@ CREATE TABLE IF NOT EXISTS admin_users (
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     email VARCHAR(100),
-    is_admin BOOLEAN DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP
 );
@@ -35,66 +33,92 @@ CREATE TABLE IF NOT EXISTS selectable_numbers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     number VARCHAR(20) NOT NULL UNIQUE,
     is_premium BOOLEAN DEFAULT 0,
-    sponsor_info TEXT,
     status VARCHAR(20) DEFAULT 'available', -- 'available', 'used', 'reserved'
-    used_by INTEGER,
     used_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 备案申请表
+-- 备案申请表 (重要修改)
 CREATE TABLE IF NOT EXISTS icp_applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    number VARCHAR(20) NOT NULL UNIQUE,
+    number VARCHAR(20) NOT NULL,
     website_name VARCHAR(100) NOT NULL,
     domain VARCHAR(100) NOT NULL,
     description TEXT,
     owner_name VARCHAR(50),
     owner_email VARCHAR(100),
-    owner_phone VARCHAR(20),
-    status VARCHAR(20) DEFAULT 'pending', -- pending/approved/rejected
+    status VARCHAR(20) DEFAULT 'pending', -- pending, pending_payment, approved, rejected
     reject_reason TEXT,
+    payment_platform VARCHAR(50),      -- 新增：赞助平台 (e.g., 'wechat', 'alipay')
+    transaction_id VARCHAR(255),       -- 新增：订单号
+    is_resubmitted BOOLEAN DEFAULT 0,  -- 新增：标记为用户重新提交
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     reviewed_at TIMESTAMP,
     reviewed_by INTEGER,
     FOREIGN KEY (reviewed_by) REFERENCES admin_users(id)
 );
 
--- 插件表
-CREATE TABLE IF NOT EXISTS plugins (
+-- 登录尝试记录表
+CREATE TABLE IF NOT EXISTS login_attempts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    plugin_id VARCHAR(100) NOT NULL UNIQUE,
-    name VARCHAR(100) NOT NULL,
-    version VARCHAR(20) NOT NULL,
-    author VARCHAR(100),
-    description TEXT,
-    is_active BOOLEAN DEFAULT 0,
-    installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ip_address VARCHAR(45) NOT NULL,
+    username VARCHAR(100),
+    attempt_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    success BOOLEAN DEFAULT 0,
+    user_agent TEXT
 );
 
--- 操作日志表
-CREATE TABLE IF NOT EXISTS operation_logs (
+-- 数据库迁移版本记录表
+CREATE TABLE IF NOT EXISTS migrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    version VARCHAR(255) NOT NULL UNIQUE,
+    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 管理员操作日志表
+CREATE TABLE IF NOT EXISTS admin_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
-    action VARCHAR(50) NOT NULL,
+    action TEXT,
+    target TEXT,
     details TEXT,
-    ip_address VARCHAR(50),
+    ip_address VARCHAR(45),
     user_agent TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES admin_users(id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 初始化管理员账户(密码将在安装时设置)
 INSERT OR IGNORE INTO admin_users (username, password, email) VALUES 
 ('admin', '', 'admin@example.com');
 
+-- 邮件验证码表
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id INTEGER NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    code VARCHAR(10) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 插件管理表
+CREATE TABLE IF NOT EXISTS plugins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL,
+    identifier VARCHAR(50) NOT NULL UNIQUE, -- 插件唯一标识符，通常是插件目录名
+    version VARCHAR(20),
+    description TEXT,
+    author VARCHAR(100),
+    is_active BOOLEAN DEFAULT 0, -- 0 for inactive, 1 for active
+    installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 初始化基本配置
 INSERT OR IGNORE INTO system_config (config_key, config_value) VALUES
 ('site_name', 'Yuan-ICP'),
 ('site_url', 'http://localhost'),
 ('timezone', 'Asia/Shanghai'),
-('icp_prefix', 'ICP'),
-('icp_suffix', '号'),
+('icp_prefix', 'Yuan'),
 ('icp_digits', 8),
-('enable_leap', 1),
-('default_theme', 'default');
+('number_auto_generate', '0'),
+('system_version', '1.0.0');

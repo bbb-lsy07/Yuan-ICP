@@ -8,14 +8,74 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// 插件系统已移至 bootstrap.php 中统一管理
+
 // 检查用户是否登录
 function is_logged_in() {
     return isset($_SESSION['user_id']);
 }
 
+// 检查IP是否被临时封禁
+function is_ip_blocked($ip) {
+    $db = db();
+    
+    // 检查最近1小时内是否有超过5次失败尝试
+    $stmt = $db->prepare("
+        SELECT COUNT(*) 
+        FROM login_attempts 
+        WHERE ip_address = ? 
+        AND attempt_time > datetime('now', '-1 hour') 
+        AND success = 0
+    ");
+    $stmt->execute([$ip]);
+    $failedAttempts = $stmt->fetchColumn();
+    
+    return $failedAttempts >= 5;
+}
+
+// 记录登录尝试
+function log_login_attempt($ip, $username, $success, $userAgent = '') {
+    $db = db();
+    $stmt = $db->prepare("
+        INSERT INTO login_attempts (ip_address, username, success, user_agent) 
+        VALUES (?, ?, ?, ?)
+    ");
+    $stmt->execute([$ip, $username, $success ? 1 : 0, $userAgent]);
+}
+
+// 获取客户端真实IP
+function get_client_ip() {
+    $ipKeys = ['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 'HTTP_X_CLUSTER_CLIENT_IP', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR'];
+    
+    foreach ($ipKeys as $key) {
+        if (array_key_exists($key, $_SERVER) === true) {
+            $ip = $_SERVER[$key];
+            if (strpos($ip, ',') !== false) {
+                $ip = explode(',', $ip)[0];
+            }
+            $ip = trim($ip);
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return $ip;
+            }
+        }
+    }
+    
+    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+}
+
 // 用户登录
 function login($username, $password) {
     $db = db();
+    $clientIp = get_client_ip();
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    
+    // 检查IP是否被临时封禁
+    if (is_ip_blocked($clientIp)) {
+        error_log("Blocked login attempt from IP: {$clientIp}");
+        log_login_attempt($clientIp, $username, false, $userAgent);
+        return false;
+    }
+    
     $stmt = $db->prepare("SELECT * FROM admin_users WHERE username = ? LIMIT 1");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
@@ -25,19 +85,67 @@ function login($username, $password) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['last_login'] = time();
+        $_SESSION['login_ip'] = $clientIp;
         
         // 更新最后登录时间
         $stmt = $db->prepare("UPDATE admin_users SET last_login = ".db_now()." WHERE id = ?");
         $stmt->execute([$user['id']]);
         
+        // 记录成功的登录尝试
+        log_login_attempt($clientIp, $username, true, $userAgent);
+        
+        // 记录管理员操作日志
+        try {
+            $stmt = $db->prepare("
+                INSERT INTO admin_logs (user_id, action, target, details, ip_address, user_agent) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $user['id'],
+                'login',
+                'system',
+                '管理员登录成功',
+                $clientIp,
+                $userAgent
+            ]);
+        } catch (Exception $e) {
+            error_log('记录登录操作日志失败: ' . $e->getMessage());
+        }
+        
         return true;
+    } else {
+        // 记录失败的登录尝试
+        log_login_attempt($clientIp, $username, false, $userAgent);
+        return false;
     }
-    
-    return false;
 }
 
 // 用户登出
 function logout() {
+    // 记录登出操作日志（在清除会话前）
+    if (is_logged_in()) {
+        try {
+            $db = db();
+            $currentUser = current_user();
+            if ($currentUser) {
+                $stmt = $db->prepare("
+                    INSERT INTO admin_logs (user_id, action, target, details, ip_address, user_agent) 
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $currentUser['id'],
+                    'logout',
+                    'system',
+                    '管理员登出',
+                    get_client_ip(),
+                    $_SERVER['HTTP_USER_AGENT'] ?? ''
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('记录登出操作日志失败: ' . $e->getMessage());
+        }
+    }
+    
     // 清除所有会话数据
     $_SESSION = [];
     
@@ -77,7 +185,21 @@ function is_admin() {
 // 防止未授权访问
 function require_login() {
     if (!is_logged_in()) {
-        redirect('/admin/login.php');
+        // 检查这是否是一个 AJAX 请求
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            // 如果是 AJAX 请求，发送一个 JSON 错误响应
+            http_response_code(401); // 401 Unauthorized 状态码
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false, 
+                'message' => '您的登录会话已过期，请重新登录。',
+                'redirect' => '/admin/login.php' // 告知前端跳转地址
+            ]);
+            exit;
+        } else {
+            // 如果是常规浏览器请求，执行重定向
+            redirect('/admin/login.php');
+        }
     }
 }
 
