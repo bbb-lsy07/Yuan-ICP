@@ -241,21 +241,40 @@ function apply_updates($zipFile) {
     $zip->extractTo($tempDir);
     $zip->close();
     
+    // --- 新增代码开始：智能查找更新源根目录 ---
+    $extracted_files = array_values(array_diff(scandir($tempDir), ['.', '..']));
+    $sourceRoot = $tempDir; // 默认源就是解压的临时目录
+
+    // 如果解压后只有一个文件夹（GitHub的典型结构），则将该文件夹作为源根目录
+    if (count($extracted_files) === 1 && is_dir($tempDir . '/' . $extracted_files[0])) {
+        $sourceRoot = $tempDir . '/' . $extracted_files[0];
+        log_progress("检测到更新包子目录: " . $extracted_files[0] . "，将其设为更新源。");
+    } else {
+        log_progress("未检测到单一子目录，将直接从临时目录根部进行更新。");
+    }
+    // --- 新增代码结束 ---
+
     $ignore_list = ['config/', 'data/', 'uploads/', '.env', 'maintenance.flag', 'VERSION'];
     
     $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($tempDir, RecursiveDirectoryIterator::SKIP_DOTS),
+        new RecursiveDirectoryIterator($sourceRoot， RecursiveDirectoryIterator::SKIP_DOTS),
         RecursiveIteratorIterator::SELF_FIRST
     );
     
     foreach ($iterator as $item) {
         $source_path = $item->getRealPath();
-        $relative_path = substr($source_path, strlen($tempDir) + 1);
-        $destination_path = $ROOT_PATH . '/' . $relative_path;
+        // --- 修改点：从正确的源根目录计算相对路径 ---
+        $relative_path = substr($source_path, strlen($sourceRoot) + 1);
+        
+        if (empty($relative_path)) {
+            continue; // 跳过根目录本身
+        }
+
+        $destination_path = $ROOT_PATH . '/' 。 $relative_path;
 
         $should_ignore = false;
         foreach ($ignore_list as $ignore_item) {
-            if (strpos($relative_path, $ignore_item) === 0) {
+            if (strpos($relative_path， $ignore_item) === 0) {
                 $should_ignore = true;
                 break;
             }
@@ -263,7 +282,11 @@ function apply_updates($zipFile) {
         if ($should_ignore) continue;
 
         if ($item->isDir()) {
-            if (!is_dir($destination_path)) mkdir($destination_path, 0755, true);
+            if (!is_dir($destination_path)) {
+                if (!mkdir($destination_path, 0755, true)) {
+                    throw new Exception("创建目录失败: {$relative_path}");
+                }
+            }
         } else {
             if (!copy($source_path, $destination_path)) {
                 throw new Exception("文件复制失败: {$relative_path}");
@@ -277,10 +300,10 @@ function apply_updates($zipFile) {
             $objects = scandir($dir);
             foreach ($objects as $object) {
                 if ($object != "." && $object != "..") {
-                    if (is_dir($dir . DIRECTORY_SEPARATOR . $object) && !is_link($dir . DIRECTORY_SEPARATOR . $object))
+                    if (is_dir($dir 。 DIRECTORY_SEPARATOR . $object) && !is_link($dir 。 DIRECTORY_SEPARATOR . $object))
                         rrmdir($dir . DIRECTORY_SEPARATOR . $object);
                     else
-                        unlink($dir . DIRECTORY_SEPARATOR . $object);
+                        unlink($dir . DIRECTORY_SEPARATOR 。 $object);
                 }
             }
             rmdir($dir);
