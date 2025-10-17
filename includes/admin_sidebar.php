@@ -58,11 +58,6 @@ $plugin_menus = EnhancedPluginHooks::getAdminMenus();
             <a href="logs.php"><i class="fas fa-clipboard-list"></i> 系统日志</a>
         </li>
 
-        <!-- +++ 新增代码开始 +++ -->
-        <li class="<?php echo ($currentPage === 'update.php') ? 'active' : ''; ?>">
-            <a href="update.php"><i class="fas fa-cloud-upload-alt"></i> 系统在线更新</a>
-        </li>
-        <!-- +++ 新增代码结束 +++ -->
 
         <!-- 插件菜单分隔与渲染 -->
         <?php if (!empty($plugin_menus)): ?>

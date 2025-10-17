@@ -720,3 +720,16 @@ function get_system_version() {
     // 如果文件不存在或为空，返回一个默认值
     return '1.0.0';
 }
+
+/**
+ * 计算一个带偏移量的时间字符串，用于数据库参数绑定，兼容所有数据库。
+ *
+ * @param string $offset 一个能被 strtotime() 函数解析的字符串，例如 '-1 hour', '+30 days', 'now'。
+ * @return string 格式化后的 'Y-m-d H:i:s' 时间字符串。
+ */
+function db_date_offset($offset) {
+    // 设置时区，确保时间计算的准确性，如果系统设置了时区则使用，否则默认
+    $timezone = get_config('timezone', 'Asia/Shanghai');
+    date_default_timezone_set($timezone);
+    return date('Y-m-d H:i:s', strtotime($offset));
+}
