@@ -1,0 +1,56 @@
+{
+    "name": "Modern Light",
+    "version": "2.0.3",
+    "description": "一个基于现代化个人主页风格的、干净的浅色主题，灵感来源于现代个人网站设计。",
+    "author": "AI Assistant",
+    "options": {
+        "accent_color": {
+            "type": "color",
+            "label": "主题强调色",
+            "description": "用于按钮和活动链接的颜色。",
+            "default": "#3b82f6"
+        },
+        "show_background_shapes": {
+            "type": "checkbox",
+            "label": "显示背景装饰图形",
+            "description": "是否在背景显示动态模糊的装饰圆形。",
+            "default": "1"
+        },
+        "show_hero_avatar": {
+            "type": "checkbox",
+            "label": "显示首页头像",
+            "description": "是否在首页显示头像图片。",
+            "default": "1"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "首页标题",
+            "description": "首页显示的主标题文字。",
+            "default": "欢迎使用 Yuan-ICP"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "首页副标题",
+            "description": "首页显示的副标题文字。",
+            "default": "虚拟备案系统"
+        },
+        "show_footer_copyright": {
+            "type": "checkbox",
+            "label": "页脚显示版权信息",
+            "description": "控制是否在页脚显示版权信息。",
+            "default": "1"
+        },
+        "show_footer_icp": {
+            "type": "checkbox",
+            "label": "页脚显示ICP备案号",
+            "description": "控制是否在页脚显示ICP备案号。",
+            "default": "1"
+        },
+        "show_footer_gongan": {
+            "type": "checkbox",
+            "label": "页脚显示公安备案号",
+            "description": "控制是否在页脚显示公安备案号。",
+            "default": "1"
+        }
+    }
+}

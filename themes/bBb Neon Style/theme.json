@@ -1,0 +1,62 @@
+{
+    "name": "bBb Neon Style",
+    "version": "1.0.1",
+    "description": "深色具有霓虹灯效果的主题，风格来源于 bBb-Filing 系统。",
+    "author": "bbb-lsy07",
+    "options": {
+        "github_url": {
+            "type": "url",
+            "label": "右上角链接",
+            "description": "用户点击右上角按钮后跳转的URL地址。",
+            "default": "https://github.com/your-repo"
+        },
+        "github_text": {
+            "type": "text",
+            "label": "右上角文字",
+            "description": "自定义右上角按钮上显示的文字。",
+            "default": "订阅"
+        },
+        "background_blur": {
+            "type": "select",
+            "label": "背景图模糊度",
+            "description": "选择背景图片的模糊程度，数值越大越模糊。",
+            "default": "8",
+            "choices": {
+                "2": "轻微模糊 (2px)",
+                "8": "默认模糊 (8px)",
+                "15": "高度模糊 (15px)",
+                "0": "不模糊"
+            }
+        },
+        "neon_color": {
+            "type": "color",
+            "label": "霓虹灯主色调",
+            "description": "选择主题的主要霓虹灯颜色。",
+            "default": "#00ffff"
+        },
+        "show_particles": {
+            "type": "checkbox",
+            "label": "显示粒子效果",
+            "description": "是否在页面背景显示动态粒子效果。",
+            "default": "1"
+        },
+        "show_copyright": {
+            "type": "checkbox",
+            "label": "显示版权信息",
+            "description": "控制是否在页脚显示版权信息。",
+            "default": "1"
+        },
+        "show_icp_beian": {
+            "type": "checkbox",
+            "label": "显示ICP备案号",
+            "description": "控制是否在页脚显示ICP备案号。",
+            "default": "1"
+        },
+        "show_gongan_beian": {
+            "type": "checkbox",
+            "label": "显示公网安备号",
+            "description": "控制是否在页脚显示公网安备号。",
+            "default": "1"
+        }
+    }
+}

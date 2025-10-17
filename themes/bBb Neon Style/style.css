@@ -1,0 +1,1504 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+/* --- 页面加载动画 --- */
+#page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-color);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
+}
+
+/* 当body没有.loaded类时（即加载中或切换中），显示加载动画 */
+body:not(.loaded) #page-loader {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 当body有.loaded类时，隐藏内容，以便动画可以平滑显示 */
+body:not(.loaded) .container {
+    opacity: 0;
+}
+
+#page-loader .loader-spinner {
+    border: 4px solid rgba(var(--neon-color-rgb), 0.2);
+    border-left-color: var(--neon-color);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1.2s linear infinite;
+    margin-bottom: 20px;
+}
+
+#page-loader .loader-text {
+    font-size: 1.1rem;
+    color: var(--neon-color);
+    text-shadow: 0 0 4px var(--neon-color); /* 稍微减弱加载文本阴影 */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* --- 根变量 --- */
+:root {
+    --primary-color: #4A148C; /* 更深的紫色，增加神秘感 */
+    --secondary-color: #8E24AA; /* 降低紫色的饱和度 */
+    --accent-color: #FFD700;
+    --neon-color: #00e5ff; /* 稍微改变青色，使其更柔和 */
+    --glass-bg: rgba(15, 15, 30, 0.65); /* 玻璃背景带一点紫色调，并略微提高不透明度 */
+    --glass-border: rgba(255, 255, 255, 0.15); /* 减弱边框的突兀感 */
+    --text-color: #F0F0F0; /* 提高文本亮度，增强可读性 */
+    --dark-overlay: rgba(0, 0, 0, 0.6);
+    --code-bg: rgba(0, 0, 0, 0.7);
+    --sticky-header-bg: rgba(0, 0, 0, 0.5);
+    --neon-color-rgb: 0, 229, 255; /* 用于 box-shadow 的 a 通道 */
+}
+
+/* 动态更新霓虹色RGB值 */
+@property --neon-color-rgb {
+    syntax: '<color>';
+    initial-value: 0, 229, 255;
+    inherits: false;
+}
+
+/* --- 通用重置和基础样式 --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+}
+
+body {
+    padding-top: 40px;
+    padding-bottom: 80px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: #000;
+    position: relative;
+    transition: opacity 0.4s ease-in-out;
+}
+body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: url('/img/oiips.jpeg') no-repeat center center fixed;
+    background-size: cover;
+    filter: blur(8px);
+    opacity: 0.25;
+    z-index: -2;
+}
+
+/* --- 动态粒子背景 --- */
+#particle-container {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100vh;
+    pointer-events: none; z-index: -1; overflow: hidden;
+}
+.particle {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.2); /* 降低粒子透明度，让它们更微妙 */
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.2); /* 减弱粒子光晕 */
+    animation-name: move-particles;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    bottom: -20px;
+}
+@keyframes move-particles {
+    to { transform: translateY(-105vh) rotate(360deg); }
+}
+
+/* 删除旧的 body 淡入淡出效果 */
+
+/* --- 文本和标题 --- */
+body, p, a, td, th, span, pre, input, textarea, button, label, select { color: var(--text-color); }
+.holographic-text {
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #ff6b6b);
+    background-size: 200% auto; background-clip: text; -webkit-background-clip: text;
+    color: transparent; animation: moveGradient 10s linear infinite; /* 移除 hologram，并将渐变移动速度放慢 */
+    font-size: 3rem; font-weight: 700;
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.4)); /* 稍微减弱标题阴影 */
+    
+    /* --- 以下是新增的代码 --- */
+    white-space: nowrap;      /* 防止标题文本换行 */
+    overflow: hidden;         /* 隐藏超出容器宽度的部分 */
+    text-overflow: ellipsis;  /* 对被隐藏的文本显示省略号 (...) */
+    width: 100%;              /* 确保元素宽度为100%，以便溢出计算生效 */
+}
+@keyframes hologram { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+@keyframes moveGradient { 0% { background-position: 0% center; } 100% { background-position: -200% center; } }
+.note { font-size: 1rem; margin-top: 1rem; opacity: 0.8; }
+
+/* --- 容器和卡片 --- */
+.container {
+    background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border); box-shadow: 0 10px 35px rgba(0, 0, 0, 0.3);
+    padding: 40px; border-radius: 20px; width: 95%; max-width: 1100px;
+    margin: 20px auto; min-height: 80vh; position: relative; z-index: 1;
+    transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out; /* 新增过渡效果 */
+}
+
+/* 新的容器淡入淡出效果 */
+body:not(.loaded) .container {
+    opacity: 0;
+    transform: translateY(10px);
+}
+body.loaded .container {
+    opacity: 1;
+    transform: translateY(0);
+}
+.card-effect {
+    background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    border-radius: 12px; padding: 25px; /* 统一基础内边距 */ transition: all 0.3s ease;
+}
+.card-effect:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.35); } /* 减弱悬停效果 */
+
+/* --- 首页专属样式 --- */
+.header { text-align: center; margin-bottom: 2.5rem; }
+.about-section { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; width: 100%; margin: 2.5rem 0; }
+.about-card { text-align: center; padding: 25px; } /* 统一内边距 */
+.about-card h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--neon-color); }
+.neon-icon { display: block; font-size: 2.5rem; margin-bottom: 1rem; text-shadow: 0 0 8px var(--neon-color); } /* 减弱图标阴影 */
+.stats-section { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; width: 100%; margin-bottom: 2.5rem; }
+.stat-card { text-align: center; padding: 25px; } /* 统一内边距 */
+.stat-icon { font-size: 2.5rem; margin-bottom: 10px; color: var(--neon-color); text-shadow: 0 0 8px var(--neon-color); } /* 减弱图标阴影 */
+.stat-number { font-size: 2.8rem; font-weight: bold; }
+.stat-title { font-size: 1rem; opacity: 0.8; }
+.main-content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; width: 100%; }
+.announcement-list { list-style: none; padding: 0; }
+.announcement-list li a { display: flex; justify-content: space-between; align-items: center; padding: 12px 5px; border-bottom: 1px solid var(--glass-border); text-decoration: none; color: var(--text-color); transition: all 0.3s; }
+.announcement-list li a:hover { color: var(--neon-color); background: rgba(var(--neon-color-rgb), 0.05); }
+.badge-pinned { background-color: var(--accent-color); color: #000; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; margin-right: 10px; font-weight: bold; }
+.date { opacity: 0.6; font-size: 0.9em; }
+.view-all-link { display: inline-block; margin-top: 20px; color: var(--neon-color); text-decoration: none; font-weight: bold; }
+.cta-panel h2 { margin-top: 0; } 
+.cta-panel .button-container { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 16px; 
+    margin-top: 1.5rem; 
+    align-items: center;
+}
+
+/* 首页按钮特殊样式 */
+.cta-panel .button-container .glow-button {
+    width: 100%;
+    max-width: 280px;
+    font-size: 16px;
+    padding: 16px 24px;
+    min-height: 52px;
+}
+
+.cta-panel .button-container .glow-button i {
+    font-size: 18px;
+}
+
+/* --- 表单和按钮 --- */
+.form-container, .search-box, .content { max-width: 700px; margin: 0 auto; }
+.neon-form { border: 3px solid var(--neon-color); box-shadow: 0 0 18px var(--neon-color); animation: neonPulse 4s infinite alternate; /* 动画周期延长一倍多 */ padding: 25px; border-radius: 15px; display: flex; flex-direction: column; gap: 15px; width: 100%; }
+@keyframes neonPulse { from { box-shadow: 0 0 15px rgba(var(--neon-color-rgb), 0.5), inset 0 0 8px rgba(var(--neon-color-rgb), 0.1); } to { box-shadow: 0 0 25px rgba(var(--neon-color-rgb), 0.7), inset 0 0 12px rgba(var(--neon-color-rgb), 0.2); } }
+.search-input { width: 100%; padding: 14px 18px; border: 2px solid #555; border-radius: 12px; background: rgba(0,0,0,0.3); color: var(--text-color); transition: all 0.3s; }
+.search-input:focus { outline: none; border-color: var(--neon-color); box-shadow: 0 0 18px rgba(var(--neon-color-rgb), 0.7); background: rgba(var(--neon-color-rgb), 0.05); }
+
+/* === 现代玻璃拟态按钮设计 === */
+.glow-button { 
+    padding: 12px 24px; /* 增加内边距，提升触摸体验 */
+    border: none; 
+    border-radius: 12px; /* 现代圆角设计 */
+    cursor: pointer; 
+    font-size: 15px; /* 适中的字号 */
+    font-weight: 600; /* 增加字重，提升可读性 */
+    color: #FFFFFF !important; 
+    position: relative; 
+    overflow: hidden; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 流畅的缓动函数 */
+    text-decoration: none; 
+    display: inline-flex; /* 使用flex布局更好地控制内容对齐 */
+    align-items: center; /* 垂直居中对齐 */
+    justify-content: center; /* 水平居中对齐 */
+    gap: 8px; /* 图标和文字之间的间距 */
+    min-height: 44px; /* 符合触摸标准的最小高度 */
+    min-width: 120px; /* 设置最小宽度，确保按钮不会太窄 */
+    
+    /* 玻璃拟态背景 */
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    
+    /* 精致的阴影效果 */
+    box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.1),
+        0 2px 8px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 主按钮样式 - 使用霓虹青色 */
+.glow-button.primary,
+.glow-button:not([class*="secondary"]):not([class*="danger"]):not([class*="success"]) {
+    background: linear-gradient(135deg, 
+        rgba(0, 229, 255, 0.2), 
+        rgba(0, 229, 255, 0.1)
+    );
+    border-color: rgba(0, 229, 255, 0.3);
+    box-shadow: 
+        0 4px 15px rgba(0, 229, 255, 0.2),
+        0 2px 8px rgba(0, 229, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 次要按钮样式 - 使用紫色渐变 */
+.glow-button.secondary {
+    background: linear-gradient(135deg, 
+        rgba(74, 20, 140, 0.2), 
+        rgba(142, 36, 170, 0.1)
+    );
+    border-color: rgba(142, 36, 170, 0.3);
+    box-shadow: 
+        0 4px 15px rgba(142, 36, 170, 0.2),
+        0 2px 8px rgba(142, 36, 170, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 危险按钮样式 - 使用红色系 */
+.glow-button.danger {
+    background: linear-gradient(135deg, 
+        rgba(255, 71, 87, 0.2), 
+        rgba(255, 71, 87, 0.1)
+    );
+    border-color: rgba(255, 71, 87, 0.3);
+    box-shadow: 
+        0 4px 15px rgba(255, 71, 87, 0.2),
+        0 2px 8px rgba(255, 71, 87, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 成功按钮样式 - 使用绿色系 */
+.glow-button.success {
+    background: linear-gradient(135deg, 
+        rgba(46, 213, 115, 0.2), 
+        rgba(46, 213, 115, 0.1)
+    );
+    border-color: rgba(46, 213, 115, 0.3);
+    box-shadow: 
+        0 4px 15px rgba(46, 213, 115, 0.2),
+        0 2px 8px rgba(46, 213, 115, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 悬停效果 */
+.glow-button:hover { 
+    transform: translateY(-2px); /* 轻微上浮 */
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.15),
+        0 4px 12px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 主按钮悬停效果 */
+.glow-button.primary:hover,
+.glow-button:not([class*="secondary"]):not([class*="danger"]):not([class*="success"]):hover {
+    background: linear-gradient(135deg, 
+        rgba(0, 229, 255, 0.3), 
+        rgba(0, 229, 255, 0.2)
+    );
+    box-shadow: 
+        0 8px 25px rgba(0, 229, 255, 0.3),
+        0 4px 12px rgba(0, 229, 255, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 次要按钮悬停效果 */
+.glow-button.secondary:hover {
+    background: linear-gradient(135deg, 
+        rgba(74, 20, 140, 0.3), 
+        rgba(142, 36, 170, 0.2)
+    );
+    box-shadow: 
+        0 8px 25px rgba(142, 36, 170, 0.3),
+        0 4px 12px rgba(142, 36, 170, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 危险按钮悬停效果 */
+.glow-button.danger:hover {
+    background: linear-gradient(135deg, 
+        rgba(255, 71, 87, 0.3), 
+        rgba(255, 71, 87, 0.2)
+    );
+    box-shadow: 
+        0 8px 25px rgba(255, 71, 87, 0.3),
+        0 4px 12px rgba(255, 71, 87, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 成功按钮悬停效果 */
+.glow-button.success:hover {
+    background: linear-gradient(135deg, 
+        rgba(46, 213, 115, 0.3), 
+        rgba(46, 213, 115, 0.2)
+    );
+    box-shadow: 
+        0 8px 25px rgba(46, 213, 115, 0.3),
+        0 4px 12px rgba(46, 213, 115, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 点击效果 */
+.glow-button:active { 
+    transform: translateY(0); /* 点击时回到原位置 */
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.1),
+        0 1px 4px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.1s ease;
+}
+
+/* 聚焦状态 */
+.glow-button:focus {
+    outline: none;
+    box-shadow: 
+        0 4px 15px rgba(0, 0, 0, 0.1),
+        0 2px 8px rgba(0, 0, 0, 0.05),
+        0 0 0 3px rgba(0, 229, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 禁用状态样式 */
+.glow-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+    background: rgba(100, 100, 100, 0.1) !important;
+    border-color: rgba(100, 100, 100, 0.2) !important;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.glow-button:disabled:hover {
+    transform: none !important;
+    box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    background: rgba(100, 100, 100, 0.1) !important;
+    border-color: rgba(100, 100, 100, 0.2) !important;
+}
+
+/* === 按钮响应式设计 === */
+@media (max-width: 768px) {
+    .glow-button {
+        padding: 14px 20px; /* 移动端增加内边距，提升触摸体验 */
+        font-size: 14px; /* 移动端适中的字体大小 */
+        min-height: 48px; /* 移动端增加最小高度，符合触摸标准 */
+        min-width: 140px; /* 移动端增加最小宽度 */
+        gap: 10px; /* 移动端增加图标和文字间距 */
+    }
+}
+
+@media (max-width: 480px) {
+    .glow-button {
+        padding: 16px 24px; /* 小屏幕进一步增加内边距 */
+        font-size: 15px; /* 小屏幕保持字体大小 */
+        min-height: 52px; /* 小屏幕进一步增加最小高度 */
+        min-width: 160px; /* 小屏幕增加最小宽度 */
+        width: 100%; /* 小屏幕按钮占满宽度 */
+        max-width: 300px; /* 限制最大宽度，避免按钮过宽 */
+    }
+}
+
+/* === 按钮组布局支持 === */
+.button-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.button-group.vertical {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.button-group.vertical .glow-button {
+    width: 100%;
+    max-width: none;
+}
+
+@media (max-width: 768px) {
+    .button-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .button-group .glow-button {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+/* === 特殊按钮样式 === */
+/* 大按钮 - 用于主要操作 */
+.glow-button.large {
+    padding: 16px 32px;
+    font-size: 16px;
+    min-height: 52px;
+    min-width: 160px;
+}
+
+/* 小按钮 - 用于次要操作 */
+.glow-button.small {
+    padding: 8px 16px;
+    font-size: 13px;
+    min-height: 36px;
+    min-width: 100px;
+}
+
+/* 图标按钮 - 正方形设计 */
+.glow-button.icon-only {
+    padding: 12px;
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+}
+
+.glow-button.icon-only i {
+    margin: 0;
+}
+
+/* 加载状态按钮 */
+.glow-button.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.glow-button.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: button-spin 1s linear infinite;
+}
+
+@keyframes button-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* === 特殊功能按钮样式 === */
+/* 升级按钮样式 */
+.upgrade-button,
+.hint-button,
+.promotion-button,
+.recommendation-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, 
+        rgba(255, 193, 7, 0.2), 
+        rgba(255, 107, 53, 0.1)
+    );
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    color: #fff;
+    text-decoration: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 
+        0 4px 15px rgba(255, 193, 7, 0.2),
+        0 2px 8px rgba(255, 193, 7, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    min-height: 44px;
+    min-width: 120px;
+}
+
+.upgrade-button:hover,
+.hint-button:hover,
+.promotion-button:hover,
+.recommendation-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, 
+        rgba(255, 193, 7, 0.3), 
+        rgba(255, 107, 53, 0.2)
+    );
+    border-color: rgba(255, 193, 7, 0.4);
+    box-shadow: 
+        0 8px 25px rgba(255, 193, 7, 0.3),
+        0 4px 12px rgba(255, 193, 7, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    color: #fff;
+    text-decoration: none;
+}
+
+.upgrade-button:active,
+.hint-button:active,
+.promotion-button:active,
+.recommendation-button:active {
+    transform: translateY(0);
+    box-shadow: 
+        0 2px 8px rgba(255, 193, 7, 0.2),
+        0 1px 4px rgba(255, 193, 7, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Pro版升级按钮特殊样式 */
+.pro-upgrade .upgrade-button,
+.pro-upgrade-hint .hint-button {
+    background: linear-gradient(135deg, 
+        rgba(0, 212, 255, 0.2), 
+        rgba(0, 153, 204, 0.1)
+    );
+    border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 
+        0 4px 15px rgba(0, 212, 255, 0.2),
+        0 2px 8px rgba(0, 212, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.pro-upgrade .upgrade-button:hover,
+.pro-upgrade-hint .hint-button:hover {
+    background: linear-gradient(135deg, 
+        rgba(0, 212, 255, 0.3), 
+        rgba(0, 153, 204, 0.2)
+    );
+    border-color: rgba(0, 212, 255, 0.4);
+    box-shadow: 
+        0 8px 25px rgba(0, 212, 255, 0.3),
+        0 4px 12px rgba(0, 212, 255, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 会员推荐按钮特殊样式 */
+.membership-recommendation .recommendation-button {
+    background: linear-gradient(135deg, 
+        rgba(0, 212, 255, 0.2), 
+        rgba(0, 153, 204, 0.1)
+    );
+    border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 
+        0 4px 15px rgba(0, 212, 255, 0.2),
+        0 2px 8px rgba(0, 212, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.membership-recommendation .recommendation-button:hover {
+    background: linear-gradient(135deg, 
+        rgba(0, 212, 255, 0.3), 
+        rgba(0, 153, 204, 0.2)
+    );
+    border-color: rgba(0, 212, 255, 0.4);
+    box-shadow: 
+        0 8px 25px rgba(0, 212, 255, 0.3),
+        0 4px 12px rgba(0, 212, 255, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* --- 步骤指示器 (申请流程) --- */
+.step-indicator { display: flex; justify-content: space-around; margin-bottom: 2.5rem; position: relative; }
+.step { text-align: center; flex: 1; }
+.step-number { width: 40px; height: 40px; border: 2px solid var(--glass-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-weight: bold; background: var(--glass-bg); transition: all 0.3s ease; }
+.step-title { font-size: 0.9rem; opacity: 0.7; transition: all 0.3s ease; }
+.step.active .step-number { border-color: var(--neon-color); box-shadow: 0 0 8px rgba(var(--neon-color-rgb), 0.4), inset 0 0 4px rgba(var(--neon-color-rgb), 0.2); background: rgba(var(--neon-color-rgb), 0.15); color: #fff; }
+.step.active .step-title { opacity: 1; color: var(--neon-color); font-weight: bold; }
+.step.completed .step-number { border-color: #2ecc71; background: #2ecc71; color: #000; }
+.step.completed .step-title { opacity: 1; color: #2ecc71; }
+.step-indicator::before { content: ''; position: absolute; top: 19px; left: 15%; width: 70%; height: 2px; background: var(--glass-border); z-index: -1; }
+
+/* --- 号码选择 --- */
+.number-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); /* 使用auto-fill，从较小宽度开始 */
+    gap: 1.2rem; /* 稍微增加间距 */
+    min-height: 220px; /* 关键！设置一个最小高度 */
+    align-content: flex-start; /* 让内容从顶部开始排列 */
+    justify-items: center; /* 居中对齐网格项 */
+    width: 100%; /* 确保网格占满容器宽度 */
+}
+.number-card { 
+    cursor: pointer; 
+    transition: all 0.3s ease; 
+    padding: 1.2rem 0.8rem; 
+    text-align: center; 
+    position: relative; 
+    border: 2px solid transparent; 
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px; /* 确保卡片有足够高度 */
+    width: 100%; /* 占满网格单元格 */
+    min-width: 120px; /* 设置最小宽度 */
+}
+.number-card .number { 
+    font-size: 1.1rem; /* 减小字体大小以适应更长的号码 */
+    font-weight: bold; 
+    letter-spacing: 0.5px; /* 减小字间距 */
+    margin-bottom: 5px;
+    white-space: nowrap; /* 禁止换行 */
+    overflow: hidden; /* 隐藏溢出内容 */
+    text-overflow: ellipsis; /* 显示省略号 */
+    flex: 1; /* 让号码占据主要空间 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 12px; /* 给号码左右留出更多空间，避免被徽章遮挡 */
+    width: 100%; /* 占满卡片宽度 */
+    box-sizing: border-box; /* 包含padding在宽度内 */
+}
+.number-card:hover {
+    /* 对普通卡片也做类似处理 */
+    border-color: var(--neon-color); 
+    box-shadow: 0 0 18px var(--neon-color), inset 0 0 12px rgba(var(--neon-color-rgb), 0.15); /* 减弱阴影强度 */
+    transform: none;
+    background: rgba(var(--neon-color-rgb), 0.08); /* 减弱背景色强度 */
+}
+.premium-badge {
+    position: absolute;
+    top: 6px; /* 调整到更靠近顶部 */
+    right: 6px; /* 调整到更靠近右边 */
+    background: var(--accent-color);
+    color: #000;
+    padding: 4px; /* 正方形内边距 */
+    border-radius: 50%; /* 圆形徽章 */
+    font-size: 0.8em; /* 图标大小 */
+    font-weight: 600;
+    box-shadow: 0 0 8px var(--accent-color); /* 发光效果 */
+    text-shadow: none;
+    line-height: 1;
+    z-index: 2; /* 确保在号码之上 */
+    width: 24px; /* 固定宽度 */
+    height: 24px; /* 固定高度 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px; /* 确保最小尺寸 */
+}
+.premium-number { 
+    color: var(--accent-color);
+    text-shadow: 0 0 4px var(--accent-color); /* 稍微减弱靓号文字阴影 */
+}
+
+/* 靓号卡片特殊样式 - 使用新的华丽样式 */
+
+/* 选中状态保持向上浮动效果，因为这是用户主动操作的结果，轻微抖动是可接受的反馈 */
+
+/* 靓号说明提示 */
+.premium-notice {
+    background: rgba(255, 215, 0, 0.08); /* 减弱背景色强度 */
+    border: 1px solid var(--accent-color);
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-top: 15px;
+    color: var(--accent-color);
+    font-size: 0.9rem;
+    display: none;
+}
+.premium-notice.visible {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-6px); } /* 进一步减小移动距离 */
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 查询页面搜索框布局 - 最终修复版 --- */
+.search-box {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.search-box .neon-form {
+    flex-direction: row; /* 关键修复：强制水平排列 */
+    display: flex;
+    flex-wrap: nowrap; /* 桌面端绝对不换行 */
+    gap: 12px;
+    align-items: center;
+    width: fit-content; /* 让容器紧贴内容 */
+    max-width: none; /* 移除最大宽度限制 */
+    min-width: auto; /* 移除最小宽度限制 */
+    padding: 20px;
+}
+
+.search-box .input-group-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 1; /* 允许收缩但保持基本尺寸 */
+}
+
+.search-box .neon-form .search-input {
+    width: 180px; /* 固定宽度，避免弹性布局问题 */
+    flex-shrink: 0; /* 不允许收缩 */
+}
+
+.search-box .neon-form .note {
+    margin: 0;
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 0.9rem; /* 稍微缩小字体节省空间 */
+}
+
+.search-box .neon-form button {
+    flex-shrink: 0; /* 绝对不允许按钮被压缩 */
+    margin-top: 0;
+    white-space: nowrap; /* 防止按钮文字换行 */
+}
+
+/* 响应式调整 - 最终版 */
+@media (max-width: 1200px) {
+    .search-box .neon-form .search-input {
+        width: 160px; /* 在较小屏幕上减少输入框宽度 */
+    }
+}
+
+@media (max-width: 1000px) {
+    .search-box .neon-form .search-input {
+        width: 140px; /* 进一步减少宽度 */
+    }
+    .search-box .neon-form {
+        gap: 10px; /* 减少间距 */
+    }
+}
+
+@media (max-width: 768px) {
+    .search-box .neon-form {
+        flex-direction: column; /* 垂直排列 */
+        gap: 15px;
+        width: 100%;
+        max-width: 400px;
+    }
+    .search-box .input-group-wrapper {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+    }
+    .search-box .neon-form .search-input {
+        width: 100%; /* 手机上占满宽度 */
+    }
+    .search-box .neon-form button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .search-box .neon-form {
+        padding: 15px;
+    }
+}
+
+/* 结果页面代码样式 - 改进版 */
+pre {
+    background: var(--code-bg);
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 15px 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* 代码容器改进 */
+.code-container {
+    position: relative;
+    margin: 20px 0;
+    background: var(--code-bg);
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid var(--glass-border);
+    cursor: pointer; /* 提示可点击 */
+    transition: all 0.3s ease; /* 增加过渡效果 */
+}
+
+.code-container:hover {
+    border-color: var(--neon-color); /* 悬停高亮 */
+}
+
+/* 复制成功后的样式 */
+.code-container.copied {
+    border-color: #2ecc71;
+    box-shadow: 0 0 10px #2ecc71;
+}
+
+/* 复制反馈文本样式 */
+.copy-feedback {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: #2ecc71;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.code-container pre {
+    margin: 0;
+    padding: 15px; /* 可以适当调整内边距 */
+    background: transparent;
+}
+
+/* 移除旧的 .copy-button 样式 */
+
+/* 迁跃页面改进 */
+.travel-info {
+    text-align: center;
+    padding: 30px;
+}
+.travel-info h2 {
+    margin-bottom: 20px;
+}
+.travel-info p {
+    margin: 10px 0;
+    font-size: 1.1rem;
+}
+#countdown {
+    font-size: 1.5rem;
+    margin: 0 5px;
+}
+
+/* --- 表格 --- */
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: var(--glass-bg); }
+th, td { padding: 14px; text-align: left; border-bottom: 1px solid var(--glass-border); }
+th { color: var(--accent-color); }
+
+/* --- 迁跃页面 - 改进版 --- */
+.travel-body { 
+    overflow: hidden; 
+    background: #000; 
+    padding: 0; 
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#space-canvas { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    z-index: 0; 
+}
+.travel-container { 
+    z-index: 1; 
+    background: rgba(15, 15, 30, 0.8); /* 使用新的玻璃背景色 */
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 229, 255, 0.3); /* 使用新的霓虹色 */
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 0 40px rgba(0, 229, 255, 0.4), /* 减弱阴影强度 */
+                inset 0 0 15px rgba(0, 229, 255, 0.15); /* 减弱内阴影强度 */
+    max-width: 600px;
+    width: 90%;
+    text-align: center;
+}
+.travel-info {
+    padding: 20px;
+}
+.travel-info h2 {
+    margin-bottom: 20px;
+    color: var(--neon-color); /* 使用新的霓虹色变量 */
+    text-shadow: 0 0 8px var(--neon-color); /* 减弱阴影强度 */
+    font-size: 2.2rem;
+}
+.travel-info p {
+    margin: 15px 0;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+#countdown { 
+    color: var(--neon-color); /* 使用新的霓虹色变量 */
+    font-weight: bold; 
+    font-size: 2rem;
+    text-shadow: 0 0 12px var(--neon-color); /* 减弱阴影强度 */
+    animation: pulse 1s infinite alternate;
+}
+@keyframes pulse { 
+    from { 
+        text-shadow: 0 0 4px var(--neon-color), 0 0 8px var(--neon-color); /* 减弱阴影强度 */
+    } 
+    to { 
+        text-shadow: 0 0 15px var(--neon-color), 0 0 25px var(--neon-color); /* 减弱阴影强度 */
+    } 
+}
+
+/* 迁跃目标信息框 */
+.travel-target {
+    background: rgba(var(--neon-color-rgb), 0.1); /* 使用新的霓虹色变量 */
+    border: 1px solid rgba(var(--neon-color-rgb), 0.3); /* 使用新的霓虹色变量 */
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+/* 迁跃页面系统状态面板 */
+.system-status-panel {
+    margin-top: 30px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    text-align: left;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: #00e5aa; /* 稍微调整颜色，与新的霓虹色保持一致 */
+}
+
+.system-status-panel .status-text {
+    margin: 5px 0;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* 打字光标效果 */
+#typing-status::after {
+    content: '█';
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0;
+    }
+}
+.travel-target p {
+    margin: 8px 0;
+    font-size: 1rem;
+}
+.travel-target a {
+    color: var(--neon-color); /* 使用新的霓虹色变量 */
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+.travel-target a:hover {
+    text-shadow: 0 0 6px var(--neon-color); /* 减弱阴影强度 */
+    color: #ffffff;
+}
+
+/* 迁跃失败样式 */
+.travel-fail {
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 30px;
+    margin: 20px 0;
+}
+.travel-fail h2 {
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700;
+}
+.travel-fail p {
+    color: #ffffff;
+}
+
+/* --- 页脚 (左中右三段式固定布局 - 完美居中最终版) --- */
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 40px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.3);
+    z-index: 999;
+
+    /* 桌面端：使用 Flexbox 布局 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+}
+
+/* 导航菜单绝对居中 */
+.footer-nav {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1; /* 确保可点击 */
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.footer-nav a {
+    text-decoration: none;
+    margin: 0 12px;
+    font-size: 14px;
+    color: var(--text-color);
+    transition: all 0.3s ease;
+}
+.footer-nav a:hover {
+    color: var(--accent-color);
+}
+
+/* 左右两侧内容布局 */
+.footer-left, .footer-right {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    flex: 1; /* 占位，确保中间部分居中 */
+    pointer-events: none; /* 让其自身不可点击，防止遮挡导航 */
+}
+
+/* 让左右容器内部的具体内容重新响应鼠标事件 */
+.footer-left > *, .footer-right > * {
+    pointer-events: auto;
+}
+
+.footer-left {
+    justify-content: flex-start;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.footer-right {
+    justify-content: flex-end;
+    gap: 8px;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.footer-right a {
+    color: var(--text-color);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+.footer-right a:hover {
+    opacity: 1;
+    color: var(--neon-color);
+}
+.footer-right .footer-separator {
+    opacity: 0.5;
+}
+
+
+/* --- 手机端响应式样式 (全新紧凑设计) --- */
+@media (max-width: 900px) {
+    body {
+        /* 为页脚腾出空间，防止内容被遮挡 */
+        padding-bottom: 100px; 
+    }
+
+    .footer {
+        flex-direction: column; /* 垂直堆叠 */
+        justify-content: center;
+        padding: 8px 10px; /* 进一步减少内边距 */
+        gap: 5px; /* 减小行间距 */
+    }
+
+    /* 重置所有子元素的定位和顺序 */
+    .footer-nav, .footer-left, .footer-right {
+        position: static;
+        transform: none;
+        width: 100%;
+        justify-content: center; /* 全部居中 */
+        pointer-events: auto; /* 恢复点击事件 */
+    }
+
+    /* 第一行：导航 */
+    .footer-nav {
+        order: 1;
+        flex-wrap: wrap; /* 允许导航换行 */
+        gap: 0 10px; /* 导航链接之间的间距 */
+    }
+    .footer-nav a {
+        font-size: 13px; /* 缩小导航字体 */
+        margin: 0;
+    }
+
+    /* 第二行：将版权和备案信息合并显示 */
+    .footer-left {
+        order: 2;
+    }
+    .footer-right {
+        order: 3;
+    }
+    
+    .footer-left, .footer-right {
+        font-size: 11px; /* 大幅缩小信息字体 */
+        opacity: 0.6;
+        flex-wrap: wrap; /* 允许换行 */
+        gap: 5px;
+    }
+
+    /* 在小屏幕上，让版权和备案信息看起来像是一句话 */
+    .footer-right .footer-separator {
+        display: inline-block; /* 显示分隔符 */
+        margin: 0 3px;
+    }
+}
+
+
+/* --- Github角标 (保持不变) --- */
+.github-corner { 
+    position: fixed; top: 0; right: 0; width: 85px; height: 85px; background: var(--glass-bg); backdrop-filter: blur(18px); clip-path: polygon(100% 0, 0 0, 100% 100%); z-index: 1000; 
+}
+.github-link { 
+    position: absolute; top: 18px; right: 10px; text-decoration: none; font-size: 13px; transform: rotate(45deg); white-space: nowrap; color: #FFFFFF !important; 
+}
+
+/* --- 查询结果卡片通用样式 --- */
+.result-card {
+    max-width: 700px;
+    margin: 40px auto;
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeInCard 0.8s ease-out forwards;
+    padding: 30px;
+}
+
+@keyframes fadeInCard {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 普通号码查询结果卡片样式 --- */
+.normal-result-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+.normal-result-card .result-dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px 20px;
+    font-size: 1.1rem; /* 调整基础字体大小 */
+}
+.normal-result-card .result-dl dt {
+    font-weight: bold;
+    color: var(--text-color);
+    opacity: 0.7;
+    text-align: right;
+}
+.normal-result-card .result-dl dd {
+    margin: 0;
+    word-break: break-all;
+    font-weight: 500;
+}
+.normal-result-card a {
+    color: var(--neon-color);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--neon-color);
+    transition: all 0.2s;
+}
+.normal-result-card a:hover {
+    color: #fff;
+    border-bottom-style: solid;
+}
+
+
+/* --- 靓号查询结果专属样式 - 全息卡片 V3.0 --- */
+.premium-result-card {
+    padding: 2px; /* 为边框留出空间 */
+    background: transparent;
+    border: none;
+}
+.premium-result-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, var(--primary-color), var(--neon-color));
+    border-radius: 18px;
+    padding: 2px;
+    -webkit-mask: 
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+    z-index: 1;
+    animation: rotateHue 8s linear infinite;
+}
+
+@keyframes rotateHue {
+    to { filter: hue-rotate(360deg); }
+}
+
+.premium-result-card .content-inner {
+    background: linear-gradient(145deg, rgba(15, 8, 26, 0.95), rgba(8, 3, 18, 0.95));
+    border-radius: 16px;
+    padding: 30px;
+    position: relative;
+    z-index: 2;
+}
+
+.premium-result-card h2 .fa-gem {
+    color: var(--accent-color);
+    text-shadow: 0 0 15px var(--accent-color);
+    animation: gem-pulse 2.5s infinite ease-in-out;
+}
+
+@keyframes gem-pulse {
+    0%, 100% { transform: scale(1); text-shadow: 0 0 15px var(--accent-color); }
+    50% { transform: scale(1.15); text-shadow: 0 0 25px var(--accent-color); }
+}
+
+.premium-result-card .result-dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 15px 25px;
+}
+.premium-result-card .result-dl dt {
+    font-weight: bold;
+    color: var(--neon-color);
+    text-align: right;
+    opacity: 0.9;
+}
+.premium-result-card .result-dl dd {
+    margin: 0;
+    word-break: break-all;
+    font-size: 1.1rem;
+    line-height: 1.5;
+}
+
+.premium-number-text {
+    font-size: 1.8rem !important;
+    font-weight: bold;
+    background: linear-gradient(90deg, #ffd700, #ff8c00, #ff4500, #ffd700);
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: lava-flow 6s linear infinite;
+}
+
+@keyframes lava-flow {
+    to { background-position: -200% center; }
+}
+
+.premium-result-card a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+.premium-result-card a:hover {
+    text-shadow: 0 0 6px var(--accent-color);
+    filter: brightness(1.2);
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .result-card {
+        margin: 20px 15px;
+        padding: 20px;
+    }
+    .normal-result-card .result-dl,
+    .premium-result-card .result-dl {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .normal-result-card .result-dl dt,
+    .premium-result-card .result-dl dt {
+        text-align: left;
+        border-bottom: 1px solid var(--glass-border);
+        padding-bottom: 8px;
+        margin-bottom: 2px;
+    }
+}
+
+/* --- 号码选择页 - 靓号卡片专属华丽样式 --- */
+.number-card.premium {
+    background: linear-gradient(145deg, rgba(60, 35, 0, 0.4), rgba(30, 15, 0, 0.5)); /* 稍微调整背景色 */
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.15); /* 减弱阴影强度 */
+    position: relative;
+    overflow: hidden;
+}
+
+.number-card.premium .number {
+    color: var(--accent-color);
+    text-shadow: 0 0 8px var(--accent-color);
+    font-weight: 700;
+    padding: 0 12px; /* 给靓号号码更多左右空间，避免被徽章遮挡 */
+}
+
+/* 靓号卡片流光动画 */
+.number-card.premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 80%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.25), transparent); /* 减弱流光强度 */
+    transform: skewX(-30deg);
+    transition: left 0.8s ease;
+}
+
+.number-card.premium:hover::before {
+    animation: premium-shine-select 1.5s infinite linear;
+}
+
+@keyframes premium-shine-select {
+    0% { left: -150%; }
+    100% { left: 150%; }
+}
+
+.number-card.premium:hover {
+    transform: translateY(-5px) scale(1.05);
+    border-color: rgba(255, 215, 0, 0.8);
+    box-shadow: 0 0 18px rgba(255, 215, 0, 0.35), inset 0 0 10px rgba(255, 215, 0, 0.12); /* 进一步减弱阴影强度 */
+}
+
+/* 靓号徽章优化 */
+.premium-badge {
+    position: absolute;
+    top: 6px; /* 调整到更靠近顶部 */
+    right: 6px; /* 调整到更靠近右边 */
+    background: var(--accent-color);
+    color: #000;
+    padding: 4px; /* 正方形内边距 */
+    border-radius: 50%; /* 圆形徽章 */
+    font-size: 0.8em; /* 图标大小 */
+    font-weight: 600;
+    box-shadow: 0 0 8px var(--accent-color); /* 发光效果 */
+    text-shadow: none;
+    line-height: 1;
+    z-index: 2; /* 确保在号码之上 */
+    width: 24px; /* 固定宽度 */
+    height: 24px; /* 固定高度 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px; /* 确保最小尺寸 */
+}
+
+/* 选中状态的区分 */
+.number-card.selected {
+    border-color: var(--neon-color) !important; 
+    box-shadow: 0 0 18px var(--neon-color), inset 0 0 12px rgba(var(--neon-color-rgb), 0.25) !important; /* 减弱阴影强度 */
+    transform: translateY(-5px) scale(1.08) !important; 
+    background: rgba(var(--neon-color-rgb), 0.15) !important; /* 减弱背景色强度 */
+}
+
+/* 靓号被选中时的样式 */
+.number-card.premium.selected {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 18px var(--accent-color), inset 0 0 12px rgba(255,215,0,0.25) !important; /* 进一步减弱阴影强度 */
+    background: linear-gradient(145deg, rgba(255, 215, 0, 0.2), rgba(255, 100, 0, 0.25)) !important;
+}
+
+/* --- 响应式设计 --- */
+@media (max-width: 992px) {
+    .about-section, .stats-section, .main-content-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+    body { padding-top: 20px; padding-bottom: 120px; }
+    .container { padding: 20px; }
+    h1, .holographic-text { font-size: 2rem; }
+    .footer a { display: inline-block; margin: 5px 8px; }
+    
+    /* 移动端号码卡片优化 - 只保留基本的响应式样式 */
+    .number-card {
+        min-height: 90px; /* 移动端增加卡片高度 */
+        padding: 1rem 0.6rem; /* 调整移动端内边距 */
+    }
+    
+    .number-card .number {
+        font-size: 1rem; /* 移动端稍微减小字体 */
+        padding: 0 8px; /* 移动端调整左右内边距 */
+        letter-spacing: 0.3px; /* 移动端减小字间距 */
+    }
+    
+    .premium-badge {
+        width: 20px; /* 移动端减小徽章尺寸 */
+        height: 20px;
+        font-size: 0.7em; /* 移动端图标大小 */
+        top: 4px;
+        right: 4px;
+    }
+}
+
+/* --- 公告列表页标题换行和对齐问题的最终修复 --- */
+
+/* 1. 设置表格布局为固定模式，防止内容撑开列宽 */
+.table-wrapper table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* 2. 为标题单元格（td）设置flex布局，以控制内部元素对齐 */
+.table-wrapper table td:first-child {
+    display: flex;          /* 启用Flexbox布局 */
+    align-items: center;    /* 垂直居中对齐所有子元素（置顶标签和标题链接）*/
+}
+
+/* 3. 为标题链接<a>设置flex-grow，让它填充剩余空间并处理溢出 */
+.table-wrapper table td:first-child a {
+    white-space: nowrap;      /* 强制文本不换行 */
+    overflow: hidden;         /* 隐藏溢出的文本 */
+    text-overflow: ellipsis;  /* 显示省略号 */
+    flex-grow: 1;             /* 让链接占据所有可用的剩余空间 */
+    min-width: 0;             /* 关键！允许元素收缩，这是让省略号生效的重要前提 */
+    margin-left: 8px;         /* 在"置顶"标签和标题之间添加一点间距 */
+}
+
+/* 4. 确保"置顶"标签本身不会被压缩 */
+.table-wrapper .badge-pinned {
+    flex-shrink: 0; /* 防止标签在空间不足时被压缩变形 */
+}
+
+/* 5. 如果没有置顶标签，则移除左边距，确保对齐 */
+.table-wrapper table td:first-child a:only-child {
+    margin-left: 0;
+}
+
+/* 6. 为发布时间列（第二列）设置样式，防止换行 */
+.table-wrapper table td:last-child {
+    white-space: nowrap;      /* 强制文本不换行 */
+    overflow: hidden;         /* 隐藏溢出的文本 */
+    text-overflow: ellipsis;  /* 显示省略号 */
+    text-align: center;       /* 居中对齐 */
+    min-width: 0;             /* 允许元素收缩 */
+}
+
+/* 7. 为发布时间列的表头也设置居中对齐，确保标题和数据对齐 */
+.table-wrapper table th:last-child {
+    text-align: center;       /* 表头居中对齐 */
+    white-space: nowrap;      /* 强制文本不换行 */
+    overflow: hidden;         /* 隐藏溢出的文本 */
+    text-overflow: ellipsis;  /* 显示省略号 */
+}
+
+
