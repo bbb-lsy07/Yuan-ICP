@@ -20,14 +20,16 @@ function is_ip_blocked($ip) {
     $db = db();
     
     // 检查最近1小时内是否有超过5次失败尝试
+    // ✅ 改进：使用 PHP 计算时间并绑定参数，以兼容不同数据库
+    $one_hour_ago = db_date_offset('-1 hour');
     $stmt = $db->prepare("
         SELECT COUNT(*) 
         FROM login_attempts 
         WHERE ip_address = ? 
-        AND attempt_time > datetime('now', '-1 hour') 
+        AND attempt_time > ? 
         AND success = 0
     ");
-    $stmt->execute([$ip]);
+    $stmt->execute([$ip, $one_hour_ago]);
     $failedAttempts = $stmt->fetchColumn();
     
     return $failedAttempts >= 5;

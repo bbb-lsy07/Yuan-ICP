@@ -14,8 +14,10 @@ try {
     }
 
     $db = db();
-    $stmt = $db->prepare("SELECT * FROM email_verifications WHERE application_id = ? AND code = ? AND expires_at > datetime('now') ORDER BY id DESC LIMIT 1");
-    $stmt->execute([$id, $code]);
+    // ✅ 改进：使用 PHP 生成当前时间字符串并作为参数绑定
+    $now = db_date_offset('now');
+    $stmt = $db->prepare("SELECT * FROM email_verifications WHERE application_id = ? AND code = ? AND expires_at > ? ORDER BY id DESC LIMIT 1");
+    $stmt->execute([$id, $code, $now]);
     $verification = $stmt->fetch();
 
     if ($verification) {
