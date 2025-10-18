@@ -38,7 +38,7 @@ Yuan-ICP 不仅仅是一个简单的申请页面，它是一个完整的生态�
 ## 🛠️ 技术栈
 
 - **后端**: PHP (7.4+)
-- **数据库**: SQLite (默认), PDO 支持 MySQL, PostgreSQL
+- **数据库**: SQLite
 - **前端**: HTML, CSS, JavaScript
 - **主要库**:
     - **Bootstrap 5**: 构建现代化、响应式的后台管理界面。
@@ -55,7 +55,6 @@ Yuan-ICP 不仅仅是一个简单的申请页面，它是一个完整的生态�
 3.  **访问安装程序**: 在浏览器中访问 `http://你的域名/install/step1.php`。
 4.  **环境检查**: 安装向导将自动检查您的服务器环境。如果所有项目都通过，点击“下一步”。
 5.  **信息配置**:
-    *   选择数据库类型。**强烈推荐使用默认的 SQLite**，它无需额外配置，开箱即用。
     *   填写您的站点名称和URL。
     *   创建您的管理员账户（用户名和密码）。
 6.  **完成安装**: 点击“安装”，系统将自动完成数据库的初始化和配置文件的生成。
@@ -140,7 +139,7 @@ Yuan-ICP is more than just a simple application form; it's a complete ecosystem 
 ## 🛠️ Technology Stack
 
 - **Backend**: PHP (7.4+)
-- **Database**: SQLite (default), PDO support for MySQL, PostgreSQL
+- **Database**: SQLite
 - **Frontend**: HTML, CSS, JavaScript
 - **Key Libraries**:
     - **Bootstrap 5**: For building a modern, responsive admin interface.
@@ -157,7 +156,6 @@ Yuan-ICP is more than just a simple application form; it's a complete ecosystem 
 3.  **Run Installer**: Visit `http://your-domain.com/install/step1.php` in your browser.
 4.  **Environment Check**: The wizard will automatically check if your server meets the requirements. Click "Next" if all checks pass.
 5.  **Configuration**:
-    *   Choose your database type. **SQLite is highly recommended** for its simplicity and zero-configuration setup.
     *   Enter your site's name and URL.
     *   Create your administrator account.
 6.  **Complete Installation**: Click "Install". The system will initialize the database and create the configuration file.
