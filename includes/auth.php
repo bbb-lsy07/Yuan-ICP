@@ -183,6 +183,11 @@ function is_admin() {
     return $user !== null;
 }
 
+// 检查管理员是否已登录（别名函数，用于兼容性）
+function is_admin_logged_in() {
+    return is_logged_in() && is_admin();
+}
+
 // 检查管理员权限
 // 防止未授权访问
 function require_login() {

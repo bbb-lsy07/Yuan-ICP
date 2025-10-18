@@ -149,19 +149,9 @@ function is_installed() {
     }
 }
 
-// 获取当前数据库兼容的时间戳
+// 获取当前数据库兼容的时间戳 (仅SQLite)
 function db_now() {
-    $db = db();
-    switch ($db->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-        case 'sqlite':
-            return "datetime('now')";
-        case 'mysql':
-            return "NOW()";
-        case 'pgsql':
-            return "NOW()";
-        default:
-            return "NOW()";
-    }
+    return "datetime('now')";
 }
 
 /**
@@ -218,56 +208,41 @@ function run_database_migrations(PDO $db) {
     }
 }
 
-// 获取数据库连接
+/**
+ * 获取数据库连接 (仅支持 SQLite)
+ * @param bool $reset 是否强制重新连接
+ * @return PDO
+ * @throws RuntimeException
+ */
 function db($reset = false) {
     static $db = null;
-    static $connection_logged = false;
-    
-    // 只在首次连接时记录内存使用情况，避免重复日志
-    if (!$connection_logged) {
-        log_memory_usage("Before DB connection");
-        $connection_logged = true;
-    }
-    
+
     if ($reset || $db === null) {
-        // 测试环境优先使用预配置的数据库连接
-        if (isset($GLOBALS['db'])) {
-            return $GLOBALS['db'];
+        $config_file = __DIR__ . '/../config/database.php';
+
+        if (!file_exists($config_file)) {
+            // 如果在安装流程之外调用且配置文件不存在，则抛出错误
+            throw new RuntimeException("数据库配置文件未找到，请先完成安装。");
         }
-        
-    // 常规环境使用配置的数据库连接
-        $config = config('database');
-        $driver = $config['driver'] ?? 'sqlite'; // 默认使用sqlite
-        
-        switch ($driver) {
-            case 'mysql':
-                $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['database']};charset={$config['charset']}";
-                break;
-            case 'pgsql':
-                $dsn = "pgsql:host={$config['host']};port={$config['port']};dbname={$config['database']}";
-                break;
-            case 'sqlite':
-                $db_path = $config['database']; // 直接使用配置文件中定义的绝对路径
-                $dsn = "sqlite:{$db_path}";
-                break;
-            default:
-                throw new RuntimeException("Unsupported database driver: {$driver}");
+
+        $config = require $config_file;
+        $db_path = $config['database'];
+
+        if (empty($db_path)) {
+             throw new RuntimeException("数据库路径未在配置文件中定义。");
         }
         
         try {
-            $db = new PDO($dsn, $config['username'] ?? null, $config['password'] ?? null);
+            $db = new PDO("sqlite:" . $db_path);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             
-            // 在首次成功连接数据库后，立即运行迁移检查
-            if ($db) {
-                run_database_migrations($db);
-            }
-            
-            // 只在成功连接后记录一次
-            log_memory_usage("After DB connection");
+            // 首次连接时，自动检查并执行数据库结构迁移
+            run_database_migrations($db);
+
         } catch (PDOException $e) {
-            throw new RuntimeException("Database connection failed: " . $e->getMessage());
+            // 提供更具体的错误信息
+            throw new RuntimeException("数据库连接失败: " . $e->getMessage() . "。请检查文件路径和权限: " . htmlspecialchars($db_path));
         }
     }
     
