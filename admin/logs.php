@@ -37,11 +37,30 @@ try {
         }
     }
 
-    // 处理删除日志操作 - 重定向到统一API
-    if (isset($_GET['action']) && $_GET['action'] === 'delete') {
-        $_POST['action'] = 'clear_logs';
-        include __DIR__.'/../api/admin.php';
-        exit;
+    // 处理清除日志操作（使用POST并校验CSRF）
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'clear_logs') {
+        if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+            $message = '无效的请求，请刷新页面重试。';
+        } else {
+            // 清空日志表
+            $db->exec("DELETE FROM admin_logs");
+            // 记录清理操作（成为第一条新日志）
+            try {
+                $currentUser = current_user();
+                $stmt = $db->prepare("INSERT INTO admin_logs (user_id, action, target, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([
+                    $currentUser['id'] ?? null,
+                    'delete',
+                    'logs',
+                    '清除所有操作日志',
+                    get_client_ip(),
+                    $_SERVER['HTTP_USER_AGENT'] ?? ''
+                ]);
+            } catch (Exception $e) {
+                error_log('记录日志清理操作失败: ' . $e->getMessage());
+            }
+            $message = '所有日志已清除';
+        }
     }
 
     // 获取日志列表（最近100条）
@@ -101,10 +120,13 @@ try {
                     <h1 class="h2">操作日志</h1>
                     <div class="btn-toolbar mb-2 mb-md-0">
                         <?php if ($stats['total'] > 0): ?>
-                        <a href="logs.php?action=delete" class="btn btn-sm btn-outline-danger" 
-                           onclick="return confirm('确定要清除所有日志记录吗？')">
-                            <i class="fas fa-trash me-1"></i>清除日志
-                        </a>
+                        <form method="post" style="display:inline;" onsubmit="return confirm('确定要清除所有日志记录吗？')">
+                            <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
+                            <input type="hidden" name="action" value="clear_logs">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-trash me-1"></i>清除日志
+                            </button>
+                        </form>
                         <?php endif; ?>
                     </div>
                 </div>
