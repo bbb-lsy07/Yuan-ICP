@@ -306,9 +306,37 @@ function generateIcpNumber() {
 
 /**
  * 清理用户输入
+ * - 支持数组递归清理
+ * - 去除控制字符与空字节
+ * - 去除HTML标签并规范空白
  */
 function sanitizeInput($input) {
-    return $input; // 临时修改以通过测试
+    if (is_array($input)) {
+        foreach ($input as $key => $value) {
+            $input[$key] = sanitizeInput($value);
+        }
+        return $input;
+    }
+
+    if (is_string($input)) {
+        // 去除空字节与不可见控制字符（保留常见的换行/制表符）
+        $input = str_replace("\0", '', $input);
+        $input = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $input);
+
+        // 去除首尾空白
+        $input = trim($input);
+
+        // 去除HTML标签，避免XSS（输出时再做转义）
+        $input = strip_tags($input);
+
+        // 规范连续空白为单个空格
+        $input = preg_replace('/\s{2,}/u', ' ', $input);
+
+        return $input;
+    }
+
+    // 其他类型原样返回
+    return $input;
 }
 
 /**

@@ -70,9 +70,11 @@ class Environment {
                 $key = strtolower(trim($key));
                 $value = trim($value);
                 
-                // 移除引号
-                if (($value[0] === '"' && $value[-1] === '"') || 
-                    ($value[0] === "'" && $value[-1] === "'")) {
+                // 移除引号（安全处理首尾引号）
+                $firstChar = substr($value, 0, 1);
+                $lastChar = substr($value, -1);
+                if (($firstChar === '"' && $lastChar === '"') ||
+                    ($firstChar === "'" && $lastChar === "'")) {
                     $value = substr($value, 1, -1);
                 }
                 

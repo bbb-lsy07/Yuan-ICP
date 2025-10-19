@@ -17,7 +17,6 @@ $apiRoutes = [
     'get_numbers' => 'get_numbers.php',
     'get_announcements' => 'get_announcements.php',
     'submit_application' => 'submit_application.php',
-    'confirm_number' => 'confirm_number.php',
     'get_theme_options' => 'get_theme_options.php',
     'preview_theme' => 'preview_theme.php',
     
