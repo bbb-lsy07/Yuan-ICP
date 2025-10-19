@@ -24,7 +24,7 @@ extract($data);
             <li class="nav-item" role="presentation"><button class="nav-link active" id="random-tab" data-bs-toggle="tab" data-bs-target="#random" type="button" role="tab">随机选号</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" id="custom-tab" data-bs-toggle="tab" data-bs-target="#custom" type="button" role="tab">自定义靓号</button></li>
         </ul>
-        <form method="post" id="number-form" action="#" data-api="api/finalize_application.php">
+        <form method="post" id="number-form" action="#" data-api="/api/finalize_application.php">
             <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
             <input type="hidden" name="number" id="selected_number">
             <div class="tab-content" id="myTabContent">
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
         refreshBtn.querySelector('.fa-sync-alt').style.display = 'none';
         numberGridContainer.innerHTML = '<div class="col-12 text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
         try {
-            const response = await fetch('api/get_numbers.php');
+            const response = await fetch('/api/get_numbers.php');
             const data = await response.json();
             numberGridContainer.innerHTML = '';
             if (data.success && data.numbers.length > 0) {
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>提交中...';
         try {
-            const endpoint = formEl.getAttribute('data-api') || 'api/finalize_application.php';
+            const endpoint = formEl.getAttribute('data-api') || '/api/finalize_application.php';
             const res = await fetch(endpoint, { method: 'POST', body: new FormData(formEl) });
             const data = await res.json();
             if (data.success) {

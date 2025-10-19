@@ -373,16 +373,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadMoreBtn.disabled = true;
             }
             try {
-                const response = await fetch(`api/get_numbers.php?page=${page}&search=${encodeURIComponent(search)}`);
-                const data = await response.json();
+                const response = await fetch(`/api/get_numbers.php?page=${page}&search=${encodeURIComponent(search)}`);
+                const rawText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (parseErr) {
+                    const start = rawText.indexOf('{');
+                    const end = rawText.lastIndexOf('}');
+                    if (start !== -1 && end !== -1 && end > start) {
+                        data = JSON.parse(rawText.slice(start, end + 1));
+                    } else {
+                        throw parseErr;
+                    }
+                }
+
                 if (!append) grid.innerHTML = '';
-                if (data.success && data.numbers.length > 0) {
+
+                if (data && data.success === true && Array.isArray(data.numbers) && data.numbers.length > 0) {
                     data.numbers.forEach(num => grid.appendChild(createNumberCard(num)));
                     loadMoreContainer.style.display = data.has_more ? 'block' : 'none';
-                } else if (!append) {
+                } else if (data && data.success === true) {
                     grid.innerHTML = '<p class="empty-state">未找到匹配的号码。</p>';
                     loadMoreContainer.style.display = 'none';
+                } else if (data && data.success === false) {
+                    const err = data.error || data.message || '加载号码失败，请稍后重试。';
+                    grid.innerHTML = `<p class="error-state">${err}</p>`;
+                    loadMoreContainer.style.display = 'none';
                 } else {
+                    grid.innerHTML = '<p class="error-state">加载号码失败，请重试。</p>';
                     loadMoreContainer.style.display = 'none';
                 }
             } catch (e) {
@@ -431,11 +450,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.append('number', selectedNumberInfo.number);
                 if (window.CSRF_TOKEN) formData.append('csrf_token', window.CSRF_TOKEN);
 
-                let api_url = 'api/finalize_application.php';
+                let api_url = '/api/finalize_application.php';
                 let body = formData;
                 
                 if (isPayment) {
-                    api_url = 'api/submit_payment.php';
+                    api_url = '/api/submit_payment.php';
                     body = new FormData(paymentForm);
                 }
 
@@ -470,7 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.append('number', selectedNumberInfo.number);
                 if (window.CSRF_TOKEN) formData.append('csrf_token', window.CSRF_TOKEN);
 
-                const response = await fetch('api/finalize_application.php', { method: 'POST', body: formData });
+                const response = await fetch('/api/finalize_application.php', { method: 'POST', body: formData });
                 const result = await response.json();
 
                 if (result.success) {
@@ -502,7 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
 
                 try {
-                    const response = await fetch('api/submit_payment.php', { method: 'POST', body: new FormData(this) });
+                    const response = await fetch('/api/submit_payment.php', { method: 'POST', body: new FormData(this) });
                     const result = await response.json();
                     if (result.success) {
                         hidePaymentModal();
