@@ -117,3 +117,4 @@ extract($data);
         </div>
     </div>
 </nav>
+<div class="main-content">

@@ -14,6 +14,9 @@ try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('只允许POST请求');
     }
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        throw new Exception('无效的请求，请刷新页面重试');
+    }
     if (!isset($_SESSION['application_data'])) {
         throw new Exception('会话已过期，请返回第一步重新申请');
     }
@@ -43,21 +46,49 @@ try {
         throw new Exception('提交失败，此号码已被他人抢先选择，请刷新页面重选一个。');
     }
     
-    // 插入申请记录
-    $stmt = $db->prepare("
-        INSERT INTO icp_applications (number, website_name, domain, description, owner_name, owner_email, status, ip_address, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    ");
-    $stmt->execute([
-        $selected_number, 
-        $app_data['site_name'], 
-        $app_data['domain'], 
-        $app_data['description'], 
-        $app_data['contact_name'], 
-        $app_data['contact_email'],
-        $status,
-        get_client_ip() // 获取并添加客户端IP
-    ]);
+    // 检查是否存在 ip_address 字段，兼容未启用插件的环境
+    $hasIpColumn = false;
+    try {
+        $cols = $db->query("PRAGMA table_info(icp_applications);")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($cols as $col) {
+            if (isset($col['name']) && $col['name'] === 'ip_address') { $hasIpColumn = true; break; }
+        }
+    } catch (Exception $e) {
+        $hasIpColumn = false;
+    }
+
+    // 插入申请记录（根据是否存在 ip_address 字段选择不同的SQL）
+    if ($hasIpColumn) {
+        $stmt = $db->prepare("
+            INSERT INTO icp_applications (number, website_name, domain, description, owner_name, owner_email, status, ip_address, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ");
+        $stmt->execute([
+            $selected_number, 
+            $app_data['site_name'], 
+            $app_data['domain'], 
+            $app_data['description'], 
+            $app_data['contact_name'], 
+            $app_data['contact_email'],
+            $status,
+            get_client_ip()
+        ]);
+    } else {
+        $stmt = $db->prepare("
+            INSERT INTO icp_applications (number, website_name, domain, description, owner_name, owner_email, status, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ");
+        $stmt->execute([
+            $selected_number, 
+            $app_data['site_name'], 
+            $app_data['domain'], 
+            $app_data['description'], 
+            $app_data['contact_name'], 
+            $app_data['contact_email'],
+            $status
+        ]);
+    }
+
     $application_id = $db->lastInsertId();
 
     if (!(bool)get_config('number_auto_generate', false)) {

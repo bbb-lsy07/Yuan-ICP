@@ -1,0 +1,33 @@
+# Composer dependencies
+/vendor/
+
+# Environment and local config
+/.env
+/config/database.php
+
+# SQLite databases and backups
+/data/*.sqlite
+/data/*.sqlite3
+/data/*.db
+/data/*.bak
+
+# Uploads and generated files
+/uploads/*
+!uploads/.gitkeep
+
+# Logs
+*.log
+/data/*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# PHPStorm/IDE configs
+/.idea/
+
+# Node (if used by themes)
+/node_modules/
+
+# Cache
+/cache/
