@@ -5,6 +5,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Exception("无效的请求方法");
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) throw new Exception('无效的请求，请刷新页面重试');
 
     $id = intval($_POST['id'] ?? 0);
     $code = trim($_POST['code'] ?? '');

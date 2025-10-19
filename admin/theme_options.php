@@ -202,7 +202,11 @@ $definedOptions = ThemeManager::getThemeOptions($themeName);
 
                 fetch('../api/preview_theme.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': '<?php echo csrf_token(); ?>',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: JSON.stringify({
                         theme: '<?php echo $themeName; ?>',
                         options: options

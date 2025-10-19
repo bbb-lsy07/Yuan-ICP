@@ -6,6 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Exception("无效的请求方法");
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) throw new Exception('无效的请求，请刷新页面重试');
 
     $id = intval($_POST['id'] ?? 0);
     
@@ -14,13 +15,21 @@ try {
          throw new Exception("验证超时，请重新开始。");
     }
 
-    $site_name = trim($_POST['site_name'] ?? '');
-    $domain = trim($_POST['domain'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $contact_name = trim($_POST['contact_name'] ?? '');
+    // 清理和校验输入
+    $site_name = sanitizeInput($_POST['site_name'] ?? '');
+    $domain = sanitizeInput($_POST['domain'] ?? '');
+    $description = sanitizeInput($_POST['description'] ?? '');
+    $contact_name = sanitizeInput($_POST['contact_name'] ?? '');
+
+    // 规范域名（移除协议/末尾斜杠）
+    $domain = preg_replace('#^https?://#i', '', $domain);
+    $domain = rtrim($domain, "/");
 
     if (empty($site_name) || empty($domain) || empty($contact_name)) {
         throw new Exception("网站名称、域名和您的称呼不能为空。");
+    }
+    if (!isValidDomain($domain)) {
+        throw new Exception('请输入有效的域名（例如 example.com）。');
     }
 
     $db = db();
