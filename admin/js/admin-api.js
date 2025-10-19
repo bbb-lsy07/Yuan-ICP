@@ -226,6 +226,15 @@ class AdminAPI {
         // 以便浏览器能自动设置正确的 multipart/form-data 和 boundary。
         if (finalOptions.body instanceof FormData) {
             delete finalOptions.headers['Content-Type'];
+            // 自动附加CSRF令牌（如果未提供）
+            try {
+                if (!finalOptions.body.has('csrf_token')) {
+                    const tokenInput = document.querySelector('input[name="csrf_token"]');
+                    if (tokenInput && tokenInput.value) {
+                        finalOptions.body.append('csrf_token', tokenInput.value);
+                    }
+                }
+            } catch (e) {}
         } else {
             // 对于其他请求，确保 Content-Type 为 application/json
             finalOptions.headers['Content-Type'] = finalOptions.headers['Content-Type'] || 'application/json';
