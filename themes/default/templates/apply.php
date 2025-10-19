@@ -29,7 +29,7 @@ extract($data);
         <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
         
-        <form method="post">
+        <form id="icp-apply-form" method="post" action="apply.php" data-api="api/submit_application.php">
             <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
             <div class="mb-4">
                 <h5 class="mb-3"><i class="fas fa-globe me-2"></i>网站信息</h5>

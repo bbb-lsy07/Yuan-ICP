@@ -51,6 +51,7 @@ $data = [
     'error' => $error ?? '',
     'page_title' => '申请备案 - ' . ($config['site_name'] ?? 'Yuan-ICP'),
     'active_page' => 'apply',
+    'page_scripts' => ['/js/apply-form.js'],
 ];
 
 // 渲染页面

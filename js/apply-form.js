@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return null;
         },
         contact_name: value => {
-            if (!value.trim()) return '您的称呼不能为空';
+            // 选填：允许为空
             return null;
         },
         contact_email: value => {
@@ -71,7 +71,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         setLoading(true);
         try {
-            const response = await fetch(form.action, {
+            const endpoint = form.getAttribute('data-api') || form.action;
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 body: new FormData(form)
             });
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (result.success) {
                 showMessage(result.message, 'success');
-                setTimeout(() => { window.location.href = result.redirect; }, 1500);
+                setTimeout(() => { window.location.href = result.redirect; }, 800);
             } else {
                 showMessage(result.error, 'error');
                 setLoading(false);

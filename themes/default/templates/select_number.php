@@ -24,7 +24,8 @@ extract($data);
             <li class="nav-item" role="presentation"><button class="nav-link active" id="random-tab" data-bs-toggle="tab" data-bs-target="#random" type="button" role="tab">随机选号</button></li>
             <li class="nav-item" role="presentation"><button class="nav-link" id="custom-tab" data-bs-toggle="tab" data-bs-target="#custom" type="button" role="tab">自定义靓号</button></li>
         </ul>
-        <form method="post" id="number-form">
+        <form method="post" id="number-form" action="#" data-api="api/finalize_application.php">
+            <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
             <input type="hidden" name="number" id="selected_number">
             <div class="tab-content" id="myTabContent">
                 <div class="tab-pane fade show active" id="random" role="tabpanel">
@@ -145,6 +146,37 @@ document.addEventListener('DOMContentLoaded', function() {
         customSelectionDisplay.classList.remove('d-none');
         sponsorModal.show();
     }
+
+    // 提交表单到 API 完成申请
+    const formEl = document.getElementById('number-form');
+    formEl.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!hiddenInput.value) {
+            alert('请先选择一个号码');
+            return;
+        }
+        const submitBtn = document.getElementById('submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>提交中...';
+        try {
+            const endpoint = formEl.getAttribute('data-api') || 'api/finalize_application.php';
+            const res = await fetch(endpoint, { method: 'POST', body: new FormData(formEl) });
+            const data = await res.json();
+            if (data.success) {
+                const target = data.redirect ? data.redirect : ('result.php?application_id=' + data.application_id);
+                window.location.href = target;
+            } else {
+                alert(data.error || '提交失败，请稍后重试');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '确认选择并完成申请';
+            }
+        } catch (err) {
+            console.error(err);
+            alert('网络异常，请稍后重试');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '确认选择并完成申请';
+        }
+    });
     function clearAllSelections() {
         document.querySelectorAll('.number-card.selected').forEach(c => c.classList.remove('selected'));
         submitBtn.disabled = true;

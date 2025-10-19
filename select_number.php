@@ -15,6 +15,7 @@ $data = [
     'config' => $config,
     'page_title' => '选择备案号 - ' . ($config['site_name'] ?? 'Yuan-ICP'),
     'active_page' => 'apply', // 修改为apply，让导航保持高亮
+    'sponsor_message' => get_config('sponsor_message', '选择靓号/自定义号码需要赞赏支持，提交后请按提示完成。'),
 ];
 
 // 渲染页面
