@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedNumber = null;
 
         try {
-            const response = await fetch('api/get_numbers.php');
+            const response = await fetch('/api/get_numbers.php');
             const data = await response.json();
             grid.innerHTML = '';
             if (data.success && data.numbers.length > 0) {
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             formData.append('csrf_token', '<?php echo csrf_token(); ?>');
-            const response = await fetch('api/finalize_application.php', { method: 'POST', body: formData });
+            const response = await fetch('/api/finalize_application.php', { method: 'POST', body: formData });
             const result = await response.json();
 
             if (result.success) {
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
 
         try {
-            const response = await fetch('api/submit_payment.php', { method: 'POST', body: new FormData(this) });
+            const response = await fetch('/api/submit_payment.php', { method: 'POST', body: new FormData(this) });
             const result = await response.json();
             if (result.success) {
                 showCustomAlert(result.message, 'success');
