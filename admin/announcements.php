@@ -13,6 +13,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json; charset=utf-8');
         
         try {
+            // CSRF 校验
+            if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+                throw new Exception('无效的请求，请刷新页面重试');
+            }
             // 从POST数据中获取操作类型和ID
             $action = $_POST['action'] ?? '';
             $id = intval($_POST['id'] ?? 0);
@@ -206,12 +210,14 @@ try {
          * 删除公告函数 (AJAX版本)
          * @param {number} id 公告ID
          */
+        const CSRF_TOKEN = '<?php echo csrf_token(); ?>';
         function deleteAnnouncement(id) {
             if (confirm('确定要删除此公告吗？操作不可恢复！')) {
                 // 准备发送到后台的数据
                 const formData = new FormData();
                 formData.append('id', id);
                 formData.append('action', 'delete_announcement');
+                formData.append('csrf_token', CSRF_TOKEN);
                 
                 // 使用 fetch API 发送异步请求
                 fetch(window.location.href, { // 请求发送到当前页面
@@ -254,6 +260,7 @@ try {
             const formData = new FormData();
             formData.append('id', id);
             formData.append('action', 'toggle_announcement_pin');
+            formData.append('csrf_token', CSRF_TOKEN);
             
             fetch(window.location.href, {
                 method: 'POST',

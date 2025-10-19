@@ -37,9 +37,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'export' && $is_sqlite) {
 
 // 处理 POST 请求
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_sqlite) {
-    $action = $_POST['action'] ?? '';
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        $error = '无效的请求，请刷新页面重试。';
+    } else {
+        $action = $_POST['action'] ?? '';
 
-    // 处理导入/恢复
+        // 处理导入/恢复
     if ($action === 'import') {
         if (isset($_FILES['sqlite_restore_file']) && $_FILES['sqlite_restore_file']['error'] === UPLOAD_ERR_OK) {
             $uploaded_file = $_FILES['sqlite_restore_file']['tmp_name'];
@@ -61,10 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_sqlite) {
         } else {
             $error = "文件上传失败或没有选择文件。";
         }
-    }
-    
-    // 处理强制重建 plugins 表
-    elseif ($action === 'force_rebuild_plugins') {
+
+                // 处理强制重建 plugins 表
+        elseif ($action === 'force_rebuild_plugins') {
         try {
             $repair_messages = [];
             
@@ -309,6 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_sqlite) {
                                     <hr>
                                     <div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> 导入操作将完全覆盖当前数据库，请谨慎操作！</div>
                                     <form method="post" enctype="multipart/form-data" onsubmit="return confirm('您确定要用上传的文件覆盖当前数据库吗？此操作无法撤销！');">
+                                        <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                         <input type="hidden" name="action" value="import">
                                         <div class="mb-3">
                                             <label for="sqlite_restore_file" class="form-label">选择 <code>.db</code> 备份文件</label>
@@ -326,11 +329,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_sqlite) {
                                     <p>此功能将检查数据库结构，自动添加新版本所需的字段，并移除已废弃的旧数据表（如会员表）。</p>
                                     <p>当您从旧版本升级，或上传了旧版本的数据库备份后，请点击此按钮来确保数据库兼容。</p>
                                     <form method="post" onsubmit="return confirm('确定要开始检查和修复数据库表吗？');">
+                                        <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                         <button type="submit" name="action" value="repair_db" class="btn btn-warning w-100 mb-2">
                                             <i class="fas fa-tools me-2"></i>一键修复数据库表
                                         </button>
                                     </form>
                                     <form method="post" onsubmit="return confirm('确定要强制重建 plugins 表吗？这将删除现有插件数据！');">
+                                        <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                         <button type="submit" name="action" value="force_rebuild_plugins" class="btn btn-danger w-100">
                                             <i class="fas fa-exclamation-triangle me-2"></i>强制重建 plugins 表
                                         </button>

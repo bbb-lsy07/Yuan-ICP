@@ -9,6 +9,9 @@ try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('只允许POST请求');
     }
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        throw new Exception('无效的请求，请刷新页面重试');
+    }
     if (!isset($_SESSION['application_id_pending_payment'])) {
         throw new Exception('无效的申请或会话已过期');
     }
