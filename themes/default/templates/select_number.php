@@ -163,6 +163,42 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = false;
         sponsorModal.hide();
     });
+
+    const formEl = document.getElementById('number-form');
+    formEl.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const number = hiddenInput.value.trim();
+        if (!number) {
+            alert('请先选择一个号码');
+            return;
+        }
+        const originalHTML = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>提交中...';
+        try {
+            const body = new FormData();
+            body.append('number', number);
+            const response = await fetch('api/finalize_application.php', { method: 'POST', body });
+            const result = await response.json();
+            if (result.success) {
+                if (result.requires_payment) {
+                    window.location.href = 'result.php?application_id=' + result.application_id;
+                } else if (result.redirect) {
+                    window.location.href = result.redirect;
+                } else {
+                    window.location.href = 'result.php?application_id=' + result.application_id;
+                }
+            } else {
+                alert('提交失败：' + (result.error || '未知错误'));
+            }
+        } catch (err) {
+            alert('网络错误，请稍后重试');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalHTML;
+        }
+    });
+
     fetchAndRenderNumbers();
 });
 </script>

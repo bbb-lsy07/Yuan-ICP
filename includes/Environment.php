@@ -70,10 +70,13 @@ class Environment {
                 $key = strtolower(trim($key));
                 $value = trim($value);
                 
-                // 移除引号
-                if (($value[0] === '"' && $value[-1] === '"') || 
-                    ($value[0] === "'" && $value[-1] === "'")) {
-                    $value = substr($value, 1, -1);
+                // 移除引号（仅当值至少包含两个字符时）
+                if (strlen($value) >= 2) {
+                    $first = $value[0];
+                    $last = $value[strlen($value) - 1];
+                    if (($first === '"' && $last === '"') || ($first === "'" && $last === "'")) {
+                        $value = substr($value, 1, -1);
+                    }
                 }
                 
                 self::$config[$key] = $value;

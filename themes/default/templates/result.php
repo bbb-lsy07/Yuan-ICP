@@ -18,6 +18,7 @@ extract($data);
                             case 'pending': echo '审核中'; break;
                             case 'approved': echo '已通过'; break;
                             case 'rejected': echo '已驳回'; break;
+                            case 'pending_payment': echo '待付款'; break;
                             default: echo $application['status'];
                         }
                         ?>
@@ -35,6 +36,47 @@ extract($data);
                 </div>
             </div>
         </div>
+
+        <?php if ($application['status'] === 'pending_payment'): ?>
+        <div class="alert alert-warning">
+            <h5 class="mb-2"><i class="fas fa-gem me-2"></i>靓号赞助说明</h5>
+            <p class="mb-2"><?php echo nl2br(htmlspecialchars($config['sponsor_message'] ?? '该号码属于靓号，需要赞助支持。请根据下方指引完成赞助后提交订单号以便审核。')); ?></p>
+            <div class="row g-3 mt-2">
+                <?php if (file_exists(__DIR__ . '/../../../uploads/wechat_qr.png')): ?>
+                <div class="col-md-6 text-center">
+                    <img src="/uploads/wechat_qr.png" alt="微信支付" style="max-width:160px; border-radius:8px;">
+                    <div class="text-muted small mt-2">微信支付</div>
+                </div>
+                <?php endif; ?>
+                <?php if (file_exists(__DIR__ . '/../../../uploads/alipay_qr.png')): ?>
+                <div class="col-md-6 text-center">
+                    <img src="/uploads/alipay_qr.png" alt="支付宝" style="max-width:160px; border-radius:8px;">
+                    <div class="text-muted small mt-2">支付宝</div>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">提交付款信息</h5>
+                <form id="payment-form" class="row g-3">
+                    <div class="col-md-4">
+                        <select name="payment_platform" class="form-select" required>
+                            <option value="">选择付款平台</option>
+                            <option value="wechat">微信</option>
+                            <option value="alipay">支付宝</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <input type="text" name="transaction_id" class="form-control" placeholder="请输入订单号/交易单号" required>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">我已赞助，提交审核</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <?php if ($application['status'] === 'rejected' && !empty($application['reject_reason'])): ?>
         <div class="alert alert-danger">
@@ -76,4 +118,32 @@ extract($data);
             setTimeout(() => { this.innerHTML = originalText; }, 2000);
         });
     });
+
+    // 提交付款信息（仅在待付款状态下存在该表单）
+    const paymentForm = document.getElementById('payment-form');
+    if (paymentForm) {
+        paymentForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const original = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>提交中...';
+            try {
+                const resp = await fetch('api/submit_payment.php', { method: 'POST', body: new FormData(this) });
+                const result = await resp.json();
+                if (result.success) {
+                    alert(result.message || '提交成功');
+                    window.location.href = result.redirect;
+                } else {
+                    alert(result.error || '提交失败，请重试');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = original;
+                }
+            } catch (err) {
+                alert('网络错误，请稍后重试');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = original;
+            }
+        });
+    }
 </script>

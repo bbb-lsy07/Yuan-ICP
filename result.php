@@ -22,12 +22,16 @@ if (!$application) {
 
 $config = get_config();
 
+// 生成嵌入代码（用于网站底部展示备案号）
+$html_code = '<a href="query.php?icp_number=' . htmlspecialchars($application['number']) . '" target="_blank" rel="noopener">备案号：' . htmlspecialchars($application['number']) . '</a>';
+
 // 准备传递给模板的数据
 $data = [
     'application' => $application,
     'page_title' => '备案结果 - ' . ($config['site_name'] ?? 'Yuan-ICP'),
     'active_page' => 'apply', // 修改为apply，让导航保持高亮
-    'config' => $config
+    'config' => $config,
+    'html_code' => $html_code
 ];
 
 // 渲染页面

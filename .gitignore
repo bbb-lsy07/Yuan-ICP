@@ -1,0 +1,25 @@
+# Dependencies
+/vendor/
+
+# Environment and config
+.env
+/config/*.php
+
+# Runtime data and uploads
+/data/*
+!/data/index.php
+/uploads/*
+!/uploads/index.php
+
+# Logs and cache
+*.log
+*.cache
+
+# OS/Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Composer artifacts
+composer.phar
