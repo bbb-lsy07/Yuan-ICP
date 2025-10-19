@@ -31,55 +31,60 @@ if (!$application) {
 
 // 处理表单提交（保存数据）
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $application) {
-    // 从POST数据中获取所有可编辑字段的值
-    $number = trim($_POST['number'] ?? '');
-    $website_name = trim($_POST['website_name'] ?? '');
-    $domain = trim($_POST['domain'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $owner_name = trim($_POST['owner_name'] ?? '');
-    $owner_email = trim($_POST['owner_email'] ?? '');
-    $status = trim($_POST['status'] ?? 'pending');
-    $reject_reason = trim($_POST['reject_reason'] ?? '');
-
-    // 简单的数据验证
-    if (empty($website_name) || empty($domain) || empty($number)) {
-        $error = '备案号、网站名称和域名不能为空。';
-    } elseif (!in_array($status, ['pending', 'approved', 'rejected'])) {
-        $error = '无效的审核状态。';
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        $error = '无效的请求，请刷新页面重试。';
     } else {
-        // 构建更新语句
-        $update_stmt = $db->prepare(
-            "UPDATE icp_applications SET 
-                number = ?, 
-                website_name = ?, 
-                domain = ?, 
-                description = ?, 
-                owner_name = ?, 
-                owner_email = ?, 
-                status = ?, 
-                reject_reason = ?
-            WHERE id = ?"
-        );
-        
-        // 执行更新
-        $update_stmt->execute([
-            $number,
-            $website_name,
-            $domain,
-            $description,
-            $owner_name,
-            $owner_email,
-            $status,
-            $reject_reason,
-            $id
-        ]);
-        
-        $message = '备案信息已成功更新！';
-        
-        // 更新成功后，重新从数据库加载最新的数据以在表单中显示
-        $stmt->execute([$id]);
-        $application = $stmt->fetch();
+        // 从POST数据中获取所有可编辑字段的值
+        $number = trim($_POST['number'] ?? '');
+        $website_name = trim($_POST['website_name'] ?? '');
+        $domain = trim($_POST['domain'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $owner_name = trim($_POST['owner_name'] ?? '');
+        $owner_email = trim($_POST['owner_email'] ?? '');
+        $status = trim($_POST['status'] ?? 'pending');
+        $reject_reason = trim($_POST['reject_reason'] ?? '');
+
+        // 简单的数据验证
+        if (empty($website_name) || empty($domain) || empty($number)) {
+            $error = '备案号、网站名称和域名不能为空。';
+        } elseif (!in_array($status, ['pending', 'approved', 'rejected'])) {
+            $error = '无效的审核状态。';
+        } else {
+            // 构建更新语句
+            $update_stmt = $db->prepare(
+                "UPDATE icp_applications SET 
+                    number = ?, 
+                    website_name = ?, 
+                    domain = ?, 
+                    description = ?, 
+                    owner_name = ?, 
+                    owner_email = ?, 
+                    status = ?, 
+                    reject_reason = ?
+                WHERE id = ?"
+            );
+            
+            // 执行更新
+            $update_stmt->execute([
+                $number,
+                $website_name,
+                $domain,
+                $description,
+                $owner_name,
+                $owner_email,
+                $status,
+                $reject_reason,
+                $id
+            ]);
+            
+            $message = '备案信息已成功更新！';
+            
+            // 更新成功后，重新从数据库加载最新的数据以在表单中显示
+            $stmt->execute([$id]);
+            $application = $stmt->fetch();
+        }
     }
+
 }
 ?>
 <!DOCTYPE html>
@@ -126,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $application) {
                 <div class="card">
                     <div class="card-body">
                         <form method="post">
+                            <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                             <input type="hidden" name="id" value="<?php echo $application['id']; ?>">
                             
                             <div class="row">

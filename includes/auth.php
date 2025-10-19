@@ -83,7 +83,11 @@ function login($username, $password) {
     $user = $stmt->fetch();
     
     if ($user && verify_password($password, $user['password'])) {
-        // 登录成功，设置会话
+        // 登录成功，重生 Session ID 防止固定攻击
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+        // 设置会话
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['last_login'] = time();

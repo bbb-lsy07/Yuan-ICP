@@ -15,6 +15,7 @@
         <form id="verify-email-form" method="POST" action="/api/send_verification_code.php">
             <h3 style="text-align: center; margin-bottom: 1rem;">身份验证</h3>
             <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">为保护您的信息安全，我们需要向您的备案邮箱 <strong><?php echo htmlspecialchars($masked_email); ?></strong> 发送一个验证码。</p>
+            <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
             <input type="hidden" name="id" value="<?php echo $application['id']; ?>">
             <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-paper-plane"></i> 发送验证码</button>
         </form>
@@ -25,6 +26,7 @@
         <form id="submit-code-form" method="POST" action="/api/verify_code.php">
             <h3 style="text-align: center; margin-bottom: 1rem;">输入验证码</h3>
             <p style="text-align: center; color: var(--text-secondary); margin-bottom: 1.5rem;">验证码已发送至 <strong><?php echo htmlspecialchars($masked_email); ?></strong>，请查收并输入。</p>
+            <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
             <input type="hidden" name="id" value="<?php echo $application['id']; ?>">
             <div class="form-group">
                 <input type="text" name="code" class="form-input" placeholder="6位验证码" required>
@@ -36,6 +38,7 @@
     <!-- 步骤三：修改信息 -->
     <div id="step-3" style="<?php echo $step == 3 ? '' : 'display:none;'; ?>">
         <form id="update-form" method="POST" action="/api/update_application.php">
+            <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
             <h3 style="text-align: center; margin-bottom: 1.5rem;">修改备案信息</h3>
             <?php if($application['status'] === 'rejected' && !empty($application['reject_reason'])): ?>
                 <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: rgba(239, 68, 68, 0.05); border-radius: var(--radius-md); border-left: 4px solid #dc2626;">

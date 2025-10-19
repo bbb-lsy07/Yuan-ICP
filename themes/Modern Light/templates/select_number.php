@@ -29,6 +29,7 @@ $payment_available = $wechat_enabled || $alipay_enabled;
                 <?php endif; ?>
             </div>
             <form id="payment-form">
+                <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                 <p class="payment-form-title">完成赞助后，请填写信息以便我们核对：</p>
                 <div class="form-group">
                     <select name="payment_platform" class="form-select" required>
@@ -89,4 +90,5 @@ $payment_available = $wechat_enabled || $alipay_enabled;
 <script>
 // 将支付方式可用性传递给JavaScript
 document.body.dataset.paymentAvailable = '<?php echo $payment_available ? 'true' : 'false'; ?>';
+window.CSRF_TOKEN = '<?php echo csrf_token(); ?>';
 </script>

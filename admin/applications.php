@@ -6,6 +6,9 @@ require_login();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json; charset=utf-8');
     try {
+        if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+            throw new Exception('无效的请求，请刷新页面重试');
+        }
         $appManager = new ApplicationManager();
         $user = current_user();
         $id = intval($_POST['id']);
@@ -209,6 +212,7 @@ try {
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="post">
+                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                     <input type="hidden" name="id" id="approveId">
                     <input type="hidden" name="action" value="approve">
                     <div class="modal-header">
@@ -230,6 +234,7 @@ try {
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="post">
+                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                     <input type="hidden" name="id" id="rejectId">
                     <input type="hidden" name="action" value="reject">
                     <div class="modal-header">
@@ -256,6 +261,7 @@ try {
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="post">
+                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                     <input type="hidden" name="id" id="deleteId">
                     <input type="hidden" name="action" value="delete">
                     <div class="modal-header">

@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=utf-8');
     
     try {
+        if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+            throw new Exception('无效的请求，请刷新页面重试');
+        }
         $action = $_POST['action'] ?? '';
         $id = intval($_POST['id'] ?? 0);
         
@@ -171,6 +174,7 @@ try {
                 const formData = new FormData();
                 formData.append('action', 'toggle_premium');
                 formData.append('id', id);
+                formData.append('csrf_token', '<?php echo csrf_token(); ?>');
                 
                 api.request('numbers.php', {
                     method: 'POST',
@@ -196,6 +200,7 @@ try {
                 const formData = new FormData();
                 formData.append('action', 'delete');
                 formData.append('id', id);
+                formData.append('csrf_token', '<?php echo csrf_token(); ?>');
                 
                 api.request('numbers.php', {
                     method: 'POST',

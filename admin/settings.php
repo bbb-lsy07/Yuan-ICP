@@ -11,6 +11,9 @@ $upload_dir = __DIR__.'/../uploads/';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
+        if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+            throw new Exception('无效的请求，请刷新页面重试。');
+        }
         // 处理添加号码的逻辑
         if (isset($_POST['action']) && $_POST['action'] === 'add_numbers') {
             $numbers_to_add = trim($_POST['numbers_to_add'] ?? '');
@@ -168,6 +171,7 @@ $timezones = DateTimeZone::listIdentifiers();
                             <!-- 基本设置 -->
                             <div class="tab-pane fade <?php if($tab === 'basic') echo 'show active'; ?>">
                                 <form method="post">
+                                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                     <input type="hidden" name="action" value="save_settings"><input type="hidden" name="tab" value="basic">
                                     <div class="mb-3"><label for="site_name" class="form-label">网站名称</label><input type="text" class="form-control" id="site_name" name="site_name" value="<?php echo htmlspecialchars($allSettings['site_name'] ?? ''); ?>"></div>
                                     <div class="mb-3"><label for="site_url" class="form-label">网站URL</label><input type="url" class="form-control" id="site_url" name="site_url" value="<?php echo htmlspecialchars($allSettings['site_url'] ?? ''); ?>"></div>
@@ -179,6 +183,7 @@ $timezones = DateTimeZone::listIdentifiers();
                             <!-- SEO设置 -->
                             <div class="tab-pane fade <?php if($tab === 'seo') echo 'show active'; ?>">
                                 <form method="post">
+                                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                     <input type="hidden" name="action" value="save_settings">
                                     <input type="hidden" name="tab" value="seo">
                                     <div class="mb-3"><label for="seo_title" class="form-label">首页标题(Title)</label><input type="text" class="form-control" id="seo_title" name="seo_title" value="<?php echo htmlspecialchars($allSettings['seo_title'] ?? ''); ?>"></div>
@@ -191,6 +196,7 @@ $timezones = DateTimeZone::listIdentifiers();
                             <!-- 邮件设置 -->
                             <div class="tab-pane fade <?php if($tab === 'email') echo 'show active'; ?>">
                                 <form method="post">
+                                     <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                      <input type="hidden" name="action" value="save_settings">
                                      <input type="hidden" name="tab" value="email">
                                      
@@ -224,6 +230,7 @@ $timezones = DateTimeZone::listIdentifiers();
                             <!-- 号码池设置 -->
                             <div class="tab-pane fade <?php if($tab === 'numbers') echo 'show active'; ?>">
                                 <form method="post">
+                                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                     <input type="hidden" name="action" value="save_settings"><input type="hidden" name="tab" value="numbers">
                                     <h5 class="mb-3">号码生成模式</h5>
                                     <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="number_auto_generate" name="number_auto_generate" value="1" <?php echo !empty($allSettings['number_auto_generate']) ? 'checked' : ''; ?>><label class="form-check-label" for="number_auto_generate">开启自动生成号码</label><div class="form-text">开启后，系统将按规则生成号码。关闭后，将从手动添加的号码池中选择。</div></div>
@@ -239,6 +246,7 @@ $timezones = DateTimeZone::listIdentifiers();
                                 <hr class="my-4">
                                 <h5 class="mb-3">手动添加号码</h5>
                                 <form method="post">
+                                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                     <input type="hidden" name="tab" value="numbers">
                                     <input type="hidden" name="action" value="add_numbers">
                                     <div class="mb-3">
@@ -262,6 +270,7 @@ $timezones = DateTimeZone::listIdentifiers();
                             <!-- 赞助设置 -->
                             <div class="tab-pane fade <?php if($tab === 'sponsorship') echo 'show active'; ?>">
                                 <form method="post" enctype="multipart/form-data">
+                                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                     <input type="hidden" name="action" value="save_settings"><input type="hidden" name="tab" value="sponsorship">
                                     <div class="mb-3"><label for="sponsorship_amount" class="form-label">赞助金额 (元)</label><input type="number" step="0.01" class="form-control" id="sponsorship_amount" name="sponsorship_amount" value="<?php echo htmlspecialchars($allSettings['sponsorship_amount'] ?? '10.00'); ?>"></div>
                                     <div class="mb-3"><label for="sponsorship_instructions" class="form-label">赞助说明文字</label><textarea class="form-control" id="sponsorship_instructions" name="sponsorship_instructions" rows="4"><?php echo htmlspecialchars($allSettings['sponsorship_instructions'] ?? '感谢您选择靓号！您的赞助是对我们最大的支持。请扫描下方二维码完成赞助，并在下方填写您的付款平台和订单号以便我们进行核对。'); ?></textarea></div>
@@ -295,6 +304,7 @@ $timezones = DateTimeZone::listIdentifiers();
                             <!-- 页脚设置 -->
                             <div class="tab-pane fade <?php if($tab === 'footer') echo 'show active'; ?>">
                                 <form method="post">
+                                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                     <input type="hidden" name="action" value="save_settings">
                                     <input type="hidden" name="tab" value="footer">
                                     <h5 class="mb-3">页脚信息配置</h5>

@@ -21,6 +21,7 @@
             <?php endif; ?>
         </div>
         <form id="payment-form" class="neon-form" style="border:none; box-shadow:none; padding:10px;">
+            <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
             <p><strong>完成赞助后，请在此处填写信息以便我们核对：</strong></p>
             <select name="payment_platform" class="search-input" required>
                 <option value="">-- 请选择付款平台 --</option>
@@ -110,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('number', selectedNumber);
 
         try {
+            formData.append('csrf_token', '<?php echo csrf_token(); ?>');
             const response = await fetch('api/finalize_application.php', { method: 'POST', body: formData });
             const result = await response.json();
 

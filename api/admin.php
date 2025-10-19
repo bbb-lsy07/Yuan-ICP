@@ -18,6 +18,11 @@ try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('只允许POST请求');
     }
+
+    // 检查CSRF令牌
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        throw new Exception('无效的请求，请刷新页面重试');
+    }
     
     // 获取操作类型
     $action = $_POST['action'] ?? '';

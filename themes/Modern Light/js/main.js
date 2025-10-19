@@ -429,6 +429,7 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const formData = new FormData();
                 formData.append('number', selectedNumberInfo.number);
+                if (window.CSRF_TOKEN) formData.append('csrf_token', window.CSRF_TOKEN);
 
                 let api_url = 'api/finalize_application.php';
                 let body = formData;
@@ -467,6 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const formData = new FormData();
                 formData.append('number', selectedNumberInfo.number);
+                if (window.CSRF_TOKEN) formData.append('csrf_token', window.CSRF_TOKEN);
 
                 const response = await fetch('api/finalize_application.php', { method: 'POST', body: formData });
                 const result = await response.json();

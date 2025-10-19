@@ -9,7 +9,9 @@ $error = '';
 
 // 处理强制修复
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    if ($_POST['action'] === 'fix_plugins_table') {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        $error = '无效的请求，请刷新页面重试。';
+    } else if ($_POST['action'] === 'fix_plugins_table') {
         try {
             $messages = [];
             
@@ -183,6 +185,7 @@ if ($db) {
                             <div class="card-body d-flex flex-column">
                                 <p class="mb-3">此工具将强制重建 plugins 表，修复所有结构问题。</p>
                                 <form method="post" onsubmit="return confirm('确定要修复 plugins 表吗？这将重建表结构。');" class="mt-auto">
+                                    <input type="hidden" name="csrf_token" value="<?php echo csrf_token(); ?>">
                                     <button type="submit" name="action" value="fix_plugins_table" class="btn btn-danger w-100">
                                         <i class="fas fa-tools me-2"></i>强制修复 plugins 表
                                     </button>
