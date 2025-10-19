@@ -269,6 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_sqlite) {
                 $error = "数据库修复失败: " . $e->getMessage();
             }
         }
+    }
 }
 ?>
 <!DOCTYPE html>

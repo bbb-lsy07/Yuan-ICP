@@ -50,13 +50,14 @@ try {
         // 获取当前页数据
         $offset = ($page - 1) * $perPage;
         $stmt = $db->prepare("SELECT number, is_premium FROM selectable_numbers " . $where . " ORDER BY created_at DESC LIMIT ? OFFSET ?");
-        $stmt->bindValue(count($params) + 1, $perPage, PDO::PARAM_INT);
-        $stmt->bindValue(count($params) + 2, $offset, PDO::PARAM_INT);
         
         $i = 1;
-        foreach($params as $param) {
+        foreach ($params as $param) {
             $stmt->bindValue($i++, $param);
         }
+        // 先绑定 WHERE 子句的参数，然后依次绑定 LIMIT 和 OFFSET
+        $stmt->bindValue($i++, $perPage, PDO::PARAM_INT);
+        $stmt->bindValue($i++, $offset, PDO::PARAM_INT);
         
         $stmt->execute();
         $db_numbers = $stmt->fetchAll();
