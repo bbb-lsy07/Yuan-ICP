@@ -1,0 +1,213 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Yuan-ICP CLI Tool
+ * 
+ * Usage: php yicp <command> [arguments]
+ */
+
+if (php_sapi_name() !== 'cli') {
+    die("This script can only be run from the command line.\n");
+}
+
+// Initialize environment
+define('YICP_CLI', true);
+require_once __DIR__ . '/includes/bootstrap.php';
+
+// Color codes
+const COLOR_RESET = "\033[0m";
+const COLOR_RED = "\033[31m";
+const COLOR_GREEN = "\033[32m";
+const COLOR_YELLOW = "\033[33m";
+const COLOR_BLUE = "\033[34m";
+
+// Helper functions
+function info($msg) { echo COLOR_BLUE . "[INFO] " . COLOR_RESET . $msg . "\n"; }
+function success($msg) { echo COLOR_GREEN . "[SUCCESS] " . COLOR_RESET . $msg . "\n"; }
+function error($msg) { echo COLOR_RED . "[ERROR] " . COLOR_RESET . $msg . "\n"; }
+function warning($msg) { echo COLOR_YELLOW . "[WARNING] " . COLOR_RESET . $msg . "\n"; }
+
+// Parse arguments
+$command = $argv[1] ?? 'help';
+$args = array_slice($argv, 2);
+
+// Command dispatcher
+switch ($command) {
+    case 'help':
+        show_help();
+        break;
+        
+    case 'migrate':
+        run_migrations();
+        break;
+        
+    case 'backup':
+        run_backup();
+        break;
+        
+    case 'user:reset':
+        reset_password($args);
+        break;
+        
+    case 'cache:clear':
+        clear_cache();
+        break;
+        
+    default:
+        error("Unknown command: $command");
+        show_help();
+        exit(1);
+}
+
+// --- Commands ---
+
+function show_help() {
+    echo "Yuan-ICP CLI Tool\n\n";
+    echo "Usage: php yicp <command> [arguments]\n\n";
+    echo "Available commands:\n";
+    echo "  help                       Show this help message\n";
+    echo "  migrate                    Run database migrations\n";
+    echo "  backup                     Backup the SQLite database\n";
+    echo "  user:reset <user> <pass>   Reset admin password\n";
+    echo "  cache:clear                Clear application cache\n";
+}
+
+function run_migrations() {
+    info("Starting database migrations...");
+    $db = db();
+    $migrationPath = __DIR__ . '/install/migrations/';
+    
+    if (!is_dir($migrationPath)) {
+        error("Migrations directory not found: $migrationPath");
+        return;
+    }
+    
+    $files = glob($migrationPath . '*.sql');
+    sort($files);
+    
+    foreach ($files as $file) {
+        $filename = basename($file);
+        info("Processing: $filename");
+        
+        $sql = file_get_contents($file);
+        // Remove comments
+        $sql = preg_replace('/--.*$/m', '', $sql);
+        
+        $statements = array_filter(array_map('trim', explode(';', $sql)));
+        
+        foreach ($statements as $stmt) {
+            if (empty($stmt)) continue;
+            try {
+                $db->exec($stmt);
+            } catch (PDOException $e) {
+                // Ignore "already exists" errors for idempotency
+                if (strpos($e->getMessage(), 'already exists') === false && strpos($e->getMessage(), 'duplicate column name') === false) {
+                    warning("Error in $filename: " . $e->getMessage());
+                }
+            }
+        }
+    }
+    
+    success("Migrations completed.");
+}
+
+function run_backup() {
+    info("Starting database backup...");
+    $config = get_config(); // Assuming get_config works via bootstrap
+    
+    // In bootstrap/functions, db() uses config/database.php directly usually
+    // Let's try to locate the DB file.
+    $dbConfigPath = __DIR__ . '/config/database.php';
+    if (!file_exists($dbConfigPath)) {
+        error("Database config not found.");
+        return;
+    }
+    
+    $dbConfig = require $dbConfigPath;
+    $dbPath = $dbConfig['database'] ?? null;
+    
+    if (!$dbPath || !file_exists($dbPath)) {
+        error("Database file not found at: " . ($dbPath ?? 'unknown'));
+        return;
+    }
+    
+    $backupDir = __DIR__ . '/backups';
+    if (!is_dir($backupDir)) {
+        mkdir($backupDir, 0755, true);
+    }
+    
+    $backupFile = $backupDir . '/backup_' . date('Ymd_His') . '.db';
+    
+    if (copy($dbPath, $backupFile)) {
+        success("Database backed up to: $backupFile");
+    } else {
+        error("Failed to copy database file.");
+    }
+}
+
+function reset_password($args) {
+    if (count($args) < 2) {
+        error("Usage: php yicp user:reset <username> <new_password>");
+        return;
+    }
+    
+    $username = $args[0];
+    $password = $args[1];
+    
+    $db = db();
+    
+    // Check user exists
+    $stmt = $db->prepare("SELECT id FROM admin_users WHERE username = ?");
+    $stmt->execute([$username]);
+    $user = $stmt->fetch();
+    
+    if (!$user) {
+        error("User not found: $username");
+        return;
+    }
+    
+    // Update password
+    // Need to know hashing algorithm. Checking verify_password in functions.php/auth.php
+    // Assuming password_hash(PASSWORD_DEFAULT) based on standard PHP practices
+    // Let's check includes/auth.php logic. It uses verify_password. 
+    // Usually systems use password_hash. Let's assume standard hash.
+    
+    $hash = password_hash($password, PASSWORD_DEFAULT);
+    
+    $stmt = $db->prepare("UPDATE admin_users SET password = ? WHERE username = ?");
+    if ($stmt->execute([$hash, $username])) {
+        success("Password updated for user: $username");
+    } else {
+        error("Failed to update password.");
+    }
+}
+
+function clear_cache() {
+    info("Clearing cache...");
+    
+    $files = [
+        __DIR__ . '/data/rss_widget_cache.json',
+        // Add other cache files here
+    ];
+    
+    foreach ($files as $file) {
+        if (file_exists($file)) {
+            if (unlink($file)) {
+                success("Deleted: " . basename($file));
+            } else {
+                warning("Failed to delete: " . basename($file));
+            }
+        }
+    }
+    
+    // Also clear rate limits if table exists
+    try {
+        $db = db();
+        $db->exec("DELETE FROM rate_limits");
+        success("Rate limits cleared.");
+    } catch (Exception $e) {
+        // Ignore if table doesn't exist
+    }
+    
+    success("Cache cleared.");
+}

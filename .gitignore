@@ -1,0 +1,37 @@
+# 数据库文件
+*.db
+*.sqlite
+data/*.db
+data/*.sqlite
+
+# 配置文件
+config/database.php
+config/install.lock
+
+# 日志和缓存
+*.log
+data/rss_widget_cache.json
+data/rss_widget.log
+
+# 用户上传内容（保留目录结构，忽略内容）
+uploads/*
+!uploads/index.php
+!uploads/plugins/
+!uploads/themes/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# 个人收款码
+uploads/*_qr.png
+uploads/alipay_qr.png
+uploads/wechat_qr.png

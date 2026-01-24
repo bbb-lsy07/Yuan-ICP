@@ -1,0 +1,144 @@
+/**
+ * Yuan-ICP 核心样式
+ * 独立于主题的基础样式，确保功能正常工作
+ */
+
+/* 消息提示样式 */
+.yicp-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 400px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: yicp-slide-in 0.3s ease-out;
+}
+
+.yicp-message-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    color: white;
+}
+
+.yicp-message-success { background-color: #28a745; }
+.yicp-message-error { background-color: #dc3545; }
+.yicp-message-warning { background-color: #ffc107; color: #212529; }
+.yicp-message-info { background-color: #17a2b8; }
+
+.yicp-message-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 18px;
+    cursor: pointer;
+    margin-left: 10px;
+    opacity: 0.8;
+}
+
+.yicp-message-close:hover {
+    opacity: 1;
+}
+
+@keyframes yicp-slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 表单错误样式 */
+.yicp-field-error {
+    color: #dc3545;
+    font-size: 0.875em;
+    margin-top: 4px;
+}
+
+.yicp-error {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+/* 加载状态 */
+.yicp-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.yicp-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+/* 号码卡片基础样式 */
+.yicp-number-card {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.yicp-number-card:hover {
+    border-color: #007bff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.yicp-number-card.selected {
+    border-color: #28a745;
+    background-color: #f8fff9;
+}
+
+.yicp-number-card.premium {
+    border-color: #ffc107;
+    background: linear-gradient(135deg, #fff9e6, #ffffff);
+}
+
+.premium-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ffc107;
+    color: #212529;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: bold;
+}
+
+.number-display {
+    font-size: 1.25em;
+    font-weight: bold;
+    margin-bottom: 12px;
+    font-family: 'Courier New', monospace;
+}
+
+.select-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.select-btn:hover {
+    background: #0056b3;
+}
+
+.yicp-number-card.selected .select-btn {
+    background: #28a745;
+}
